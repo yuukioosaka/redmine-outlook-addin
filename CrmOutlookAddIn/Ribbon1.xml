@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+  <contextMenus>
+    <contextMenu idMso="ContextMenuMailItem">
+      <button id="ButtonSaveToRedmine" label="新規チケット" onAction="SaveToRedmine" />
+    </contextMenu>
+  </contextMenus>
+</customUI>
+
