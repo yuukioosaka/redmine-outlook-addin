@@ -29,12 +29,12 @@ namespace CrmOutlookAddIn
         {
             outlookApp = this.Application;
 
-            // 受信トレイの監視
+            // Monitor Inbox
             MAPIFolder inbox = outlookApp.Session.GetDefaultFolder(OlDefaultFolders.olFolderInbox);
             inboxItems = inbox.Items;
             inboxItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(InboxItemAdded);
 
-            // 送信済みトレイの監視
+            // Monitor Sent Items
             MAPIFolder sent = outlookApp.Session.GetDefaultFolder(OlDefaultFolders.olFolderSentMail);
             sentItems = sent.Items;
             sentItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(SentItemAdded);
@@ -58,7 +58,7 @@ namespace CrmOutlookAddIn
 
         private void NotifyUserOfError(System.Exception ex, string mailSubject)
         {
-            // ダイアログでエラーを通知
+            // Notify error with dialog
             System.Windows.Forms.MessageBox.Show(
                 $"An error occurred while saving the email with subject '{mailSubject}' to the database.\n\n" +
                 $"Error Details:\n{ex.Message}\n\n" +
@@ -75,7 +75,7 @@ namespace CrmOutlookAddIn
         }
 
 
-        // Redmineユーザー情報用クラス
+        // Class for Redmine user information
         public class RedmineUser
         {
             public int id { get; set; }
@@ -91,7 +91,7 @@ namespace CrmOutlookAddIn
         }
 
 
-        // SaveMailToRedmineAsyncの修正
+        // SaveMailToRedmineAsync modification
         private async Task SaveMailToRedmineAsync(MailItem mail, string direction)
         {
             try
@@ -100,12 +100,12 @@ namespace CrmOutlookAddIn
                 string apiKey = ConfigurationManager.AppSettings["RedmineApiKey"];
                 string senderEmail = GetSmtpAddress(mail.Sender);
 
-                // 件名から id:xxxx を抽出
+                // Extract id:xxxx from subject
                 string issueId = ExtractIssueIdFromSubject(mail.Subject);
                 if (string.IsNullOrEmpty(issueId))
                 {
-                    Trace.TraceInformation($"メールの件名に有効なRedmineチケットIDが見つかりませんでした: {mail.Subject}");
-                    return; // 登録をスキップ
+                    Trace.TraceInformation($"No valid Redmine ticket ID found in the mail subject: {mail.Subject}");
+                    return; // Skip registration
                 }
 
                 string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm:ss");
@@ -114,19 +114,19 @@ namespace CrmOutlookAddIn
                 {
                     client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
-                    // 既存コメントを取得
+                    // Get existing comments
                     string getUrl = $"{redmineUrl}/issues/{issueId}.json?include=journals";
                     HttpResponseMessage getResponse = await client.GetAsync(getUrl);
                     if (!getResponse.IsSuccessStatusCode)
                     {
                         string errorMessage = await getResponse.Content.ReadAsStringAsync();
-                        throw new System.Exception($"Redmineからチケット情報の取得に失敗しました: {getResponse.StatusCode} - {errorMessage}");
+                        throw new System.Exception($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
                     }
 
                     string issueJson = await getResponse.Content.ReadAsStringAsync();
                     var issueDoc = System.Text.Json.JsonDocument.Parse(issueJson);
 
-                    // journals配列を検索してSentOnが一致するノートがあるか確認
+                    // Search journals array and check if a note with the same SentOn exists
                     if (issueDoc.RootElement.TryGetProperty("issue", out var issueElem) &&
                         issueElem.TryGetProperty("journals", out var journalsElem))
                     {
@@ -137,8 +137,8 @@ namespace CrmOutlookAddIn
                                 string notes = notesElem.GetString();
                                 if (!string.IsNullOrEmpty(notes) && notes.Contains($"SentOn: {sentOnString}"))
                                 {
-                                    Trace.TraceInformation($"同じSentOn日時のコメントが既に存在するため登録をスキップ: {sentOnString}");
-                                    return; // 重複コメントを回避
+                                    Trace.TraceInformation($"A comment with the same SentOn already exists, skipping registration: {sentOnString}");
+                                    return; // Avoid duplicate comments
                                 }
                             }
                         }
@@ -165,20 +165,20 @@ namespace CrmOutlookAddIn
                     );
 
                     string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
-                    Trace.TraceInformation($"Redmineにリクエストを送信: {requestUrl}");
+                    Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
 
                     HttpResponseMessage response = await client.PutAsync(requestUrl, content);
 
                     if (!response.IsSuccessStatusCode)
                     {
                         string errorMessage = await response.Content.ReadAsStringAsync();
-                        throw new System.Exception($"Redmineへのノート登録に失敗しました: {response.StatusCode} - {errorMessage}");
+                        throw new System.Exception($"Failed to register note to Redmine: {response.StatusCode} - {errorMessage}");
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                Trace.TraceError($"Redmineへのノート登録中にエラーが発生しました: {ex.Message}\n{ex}");
+                Trace.TraceError($"Error occurred while registering note to Redmine: {ex.Message}\n{ex}");
                 NotifyUserOfError(ex, mail.Subject);
                 throw;
             }
@@ -194,7 +194,7 @@ namespace CrmOutlookAddIn
 
             string idprefix = ConfigurationManager.AppSettings["idprefix"];
 
-            // 正規表現で ticketid を抽出
+            // Extract ticket id using regular expression
             var match = System.Text.RegularExpressions.Regex.Match(subject, $"{idprefix}(\\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             return match.Success ? match.Groups[1].Value : null;
         }
@@ -211,9 +211,9 @@ namespace CrmOutlookAddIn
                 return body;
             }
 
-            // app.config から連番で ReplyDelimiter を取得
+            // Get ReplyDelimiter sequentially from app.config
             List<string> replyDelimiters = new List<string>();
-            for (int i = 1; i <= 9; i++) // 最大9個まで取得
+            for (int i = 1; i <= 9; i++) // Get up to 9
             {
                 string key = $"ReplyDelimiter{i}";
                 string value = ConfigurationManager.AppSettings[key];
@@ -223,17 +223,17 @@ namespace CrmOutlookAddIn
                 }
             }
 
-            // 正規表現で過去のメール部分を検出
+            // Detect previous mail part using regular expression
             foreach (var delimiter in replyDelimiters)
             {
                 var match = System.Text.RegularExpressions.Regex.Match(body, delimiter, System.Text.RegularExpressions.RegexOptions.Multiline);
                 if (match.Success)
                 {
-                    return body.Substring(0, match.Index).Trim(); // ヘッダー以前の部分を返す
+                    return body.Substring(0, match.Index).Trim(); // Return part before header
                 }
             }
 
-            return body; // 過去のメール部分が見つからない場合はそのまま返す
+            return body; // Return as is if previous mail part is not found
         }
 
         private string GetSmtpAddress(AddressEntry addressEntry)
