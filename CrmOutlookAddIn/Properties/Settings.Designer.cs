@@ -12,7 +12,7 @@ namespace CrmOutlookAddIn.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.13.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -20,6 +20,102 @@ namespace CrmOutlookAddIn.Properties {
         public static Settings Default {
             get {
                 return defaultInstance;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("http://localhost:3000")]
+        public string RedmineUrl {
+            get {
+                return ((string)(this["RedmineUrl"]));
+            }
+            set {
+                this["RedmineUrl"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("9b3572bf4f2cccdcdd0c254371a38babeb1004c7")]
+        public string RedmineApiKey {
+            get {
+                return ((string)(this["RedmineApiKey"]));
+            }
+            set {
+                this["RedmineApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("id:")]
+        public string idprefix {
+            get {
+                return ((string)(this["idprefix"]));
+            }
+            set {
+                this["idprefix"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("^On .+ wrote:")]
+        public string ReplyDelimiter1 {
+            get {
+                return ((string)(this["ReplyDelimiter1"]));
+            }
+            set {
+                this["ReplyDelimiter1"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("^From: .+")]
+        public string ReplyDelimiter2 {
+            get {
+                return ((string)(this["ReplyDelimiter2"]));
+            }
+            set {
+                this["ReplyDelimiter2"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("^-----Original Message-----")]
+        public string ReplyDelimiter3 {
+            get {
+                return ((string)(this["ReplyDelimiter3"]));
+            }
+            set {
+                this["ReplyDelimiter3"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("^\\d{4}年\\d{1,2}月\\d{1,2}日(.+) \\d{1,2}:\\d{2} .+ .+@.+..+:")]
+        public string ReplyDelimiter4 {
+            get {
+                return ((string)(this["ReplyDelimiter4"]));
+            }
+            set {
+                this["ReplyDelimiter4"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("dummy")]
+        public string Init {
+            get {
+                return ((string)(this["Init"]));
+            }
+            set {
+                this["Init"] = value;
             }
         }
     }

@@ -38,6 +38,17 @@ namespace CrmOutlookAddIn
             MAPIFolder sent = outlookApp.Session.GetDefaultFolder(OlDefaultFolders.olFolderSentMail);
             sentItems = sent.Items;
             sentItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(SentItemAdded);
+            if (Properties.Settings.Default.Init != "initialized") { 
+                Properties.Settings.Default.Init = "initialized";
+                Properties.Settings.Default.RedmineUrl = Properties.Settings.Default.RedmineUrl;
+                Properties.Settings.Default.RedmineApiKey = Properties.Settings.Default.RedmineApiKey;
+                Properties.Settings.Default.idprefix = Properties.Settings.Default.idprefix;
+                Properties.Settings.Default.ReplyDelimiter1 = Properties.Settings.Default.ReplyDelimiter1;
+                Properties.Settings.Default.ReplyDelimiter2 = Properties.Settings.Default.ReplyDelimiter2;
+                Properties.Settings.Default.ReplyDelimiter3 = Properties.Settings.Default.ReplyDelimiter3;
+                Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
+                Properties.Settings.Default.Save();
+            }
         }
 
         private void InboxItemAdded(object Item)
@@ -96,8 +107,8 @@ namespace CrmOutlookAddIn
         {
             try
             {
-                string redmineUrl = ConfigurationManager.AppSettings["RedmineUrl"];
-                string apiKey = ConfigurationManager.AppSettings["RedmineApiKey"];
+                string redmineUrl = Properties.Settings.Default.RedmineUrl;
+                string apiKey = Properties.Settings.Default.RedmineApiKey;
                 string senderEmail = GetSmtpAddress(mail.Sender);
 
                 // Extract id:xxxx from subject
@@ -192,7 +203,7 @@ namespace CrmOutlookAddIn
                 return null;
             }
 
-            string idprefix = ConfigurationManager.AppSettings["idprefix"];
+            string idprefix = Properties.Settings.Default.idprefix;
 
             // Extract ticket id using regular expression
             var match = System.Text.RegularExpressions.Regex.Match(subject, $"{idprefix}(\\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -212,16 +223,13 @@ namespace CrmOutlookAddIn
             }
 
             // Get ReplyDelimiter sequentially from app.config
-            List<string> replyDelimiters = new List<string>();
-            for (int i = 1; i <= 9; i++) // Get up to 9
+            List<string> replyDelimiters = new List<string>
             {
-                string key = $"ReplyDelimiter{i}";
-                string value = ConfigurationManager.AppSettings[key];
-                if (!string.IsNullOrEmpty(value))
-                {
-                    replyDelimiters.Add(value);
-                }
-            }
+                Properties.Settings.Default.ReplyDelimiter1,
+                Properties.Settings.Default.ReplyDelimiter2,
+                Properties.Settings.Default.ReplyDelimiter3,
+                Properties.Settings.Default.ReplyDelimiter4
+            };
 
             // Detect previous mail part using regular expression
             foreach (var delimiter in replyDelimiters)
@@ -262,7 +270,7 @@ namespace CrmOutlookAddIn
             string subject = null;
             try
             {
-                string redmineUrl = ConfigurationManager.AppSettings["RedmineUrl"];
+                string redmineUrl = Properties.Settings.Default.RedmineUrl;
 
                 // Get the selected mail item
                 var explorer = this.Application.ActiveExplorer();

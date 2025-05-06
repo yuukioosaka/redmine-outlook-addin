@@ -1,7 +1,30 @@
 ﻿<?xml version='1.0' encoding='utf-8'?>
-<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)">
-  <Profiles>
-    <Profile Name="(Default)" />
-  </Profiles>
-  <Settings />
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="CrmOutlookAddIn.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="RedmineUrl" Type="System.String" Scope="User">
+      <Value Profile="(Default)">http://localhost:3000</Value>
+    </Setting>
+    <Setting Name="RedmineApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)">9b3572bf4f2cccdcdd0c254371a38babeb1004c7</Value>
+    </Setting>
+    <Setting Name="idprefix" Type="System.String" Scope="User">
+      <Value Profile="(Default)">id:</Value>
+    </Setting>
+    <Setting Name="ReplyDelimiter1" Type="System.String" Scope="User">
+      <Value Profile="(Default)">^On .+ wrote:</Value>
+    </Setting>
+    <Setting Name="ReplyDelimiter2" Type="System.String" Scope="User">
+      <Value Profile="(Default)">^From: .+</Value>
+    </Setting>
+    <Setting Name="ReplyDelimiter3" Type="System.String" Scope="User">
+      <Value Profile="(Default)">^-----Original Message-----</Value>
+    </Setting>
+    <Setting Name="ReplyDelimiter4" Type="System.String" Scope="User">
+      <Value Profile="(Default)">^\d{4}年\d{1,2}月\d{1,2}日(.+) \d{1,2}:\d{2} .+ .+@.+..+:</Value>
+    </Setting>
+    <Setting Name="Init" Type="System.String" Scope="User">
+      <Value Profile="(Default)">dummy</Value>
+    </Setting>
+  </Settings>
 </SettingsFile>
