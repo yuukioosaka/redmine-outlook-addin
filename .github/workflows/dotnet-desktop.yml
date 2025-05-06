@@ -1,9 +1,10 @@
-name: .NET Framework Desktop (VSTO Add-in Release)
+name: .NET Framework Desktop (VSTO Add-in)
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -17,7 +18,7 @@ jobs:
 
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
-
+      
     - name: Build VSTO project
       run: |
         msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\
