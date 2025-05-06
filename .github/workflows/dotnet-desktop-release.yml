@@ -1,4 +1,4 @@
-name: .NET Framework Desktop (VSTO Add-in)
+name: .NET Framework Desktop (VSTO Add-in Release)
 
 on:
   push:

@@ -32,10 +32,3 @@ jobs:
       with:
         name: ClickOnceSetup
         path: ClickOnceSetup.zip
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ClickOnceSetup.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
