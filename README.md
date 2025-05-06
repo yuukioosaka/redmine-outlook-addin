@@ -5,7 +5,7 @@ This project is built using C# and targets the .NET Framework 4.8.
 ## Features
 - Automatically logs emails (both sent and received) to Redmine issues based on ticket IDs in the email subject.
 - Prevents duplicate comments in Redmine by checking existing journal entries.
-- Provides a ribbon button to manually create a new Redmine issue from an email.
+- Provides a right click context menu to manually create a new Redmine issue from an email.
 - Configurable settings for Redmine URL, API key, and email subject prefix.
 
 ## Prerequisites
@@ -21,9 +21,9 @@ This project is built using C# and targets the .NET Framework 4.8.
 ## Configuration
 Before using the add-in, you need to configure the `user.config` file. 
 This file contains essential settings for connecting to Redmine and customizing the behavior of the add-in.  
-you can find user.config below
-%LOCALAPPDATA%\Local\Apps\2.0\Data\[randomid]\crmo..vsto_[randomid]\Data\16.0.18730.20122
-ex)
+you can find user.config below  
+%LOCALAPPDATA%\Local\Apps\2.0\Data\[randomid]\crmo..vsto_[randomid]\Data\16.0.18730.20122  
+ex)  
 C:\Users\username\AppData\Local\Apps\2.0\Data\TZ13HK22.WN8\0TO1CPPV.XHW\crmo..vsto_061175295e4e6d57_0001.0000_7ac4fe303c687902\Data\16.0.18730.20122
 
 ### Configuration File: `user.config`
