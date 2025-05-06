@@ -1,10 +1,9 @@
-name: .NET Framework Desktop (VSTO Add-in)
+name: .NET Framework Desktop (VSTO Add-in Release)
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -18,13 +17,24 @@ jobs:
 
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
-      
+
     - name: Build VSTO project
       run: |
         msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\
 
-    - name: Upload build artifacts
+    - name: Archive publish folder
+      run: |
+        powershell -Command "Compress-Archive -Path CrmOutlookAddIn\publish\* -DestinationPath ClickOnceSetup.zip"
+
+    - name: Upload build artifacts (optional)
       uses: actions/upload-artifact@v4
       with:
         name: ClickOnceSetup
-        path: CrmOutlookAddIn\publish\
+        path: ClickOnceSetup.zip
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ClickOnceSetup.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
