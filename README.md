@@ -15,6 +15,8 @@ This project is built using C# and targets the .NET Framework 4.8.
 
 ## Installation
 - Download ClickOnceSetup.zip from GitHub Actions Recent Artifacts.
+  - https://github.com/yuukioosaka/redmine-outlook-addin/actions/
+  * click recent build -> Artifacts -> ClickOnceSetup.zip
 - extract and run Setup.exe
 - Start Outlook(classic), and Close. "user.config" will create automatically.
 
