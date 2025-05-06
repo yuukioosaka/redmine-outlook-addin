@@ -21,4 +21,4 @@ jobs:
       
     - name: Build VSTO project
       run: |
-        msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /p:Configuration=Release /p:Platform="Any CPU"
+        msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /p:Configuration=Release
