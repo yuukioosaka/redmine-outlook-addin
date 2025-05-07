@@ -49,6 +49,20 @@ namespace CrmOutlookAddIn
                 Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
                 Properties.Settings.Default.Save();
             }
+
+            // Add a TextWriterTraceListener to log to %TEMP% directory
+            string tempPath = Environment.GetEnvironmentVariable("TEMP");
+            if (!string.IsNullOrEmpty(tempPath))
+            {
+                string logFilePath = System.IO.Path.Combine(tempPath, "CrmOutlookAddIn.log");
+                Trace.Listeners.Add(new TextWriterTraceListener(logFilePath));
+                Trace.AutoFlush = true; // Ensure logs are written immediately
+                Trace.TraceInformation("Trace listener initialized. Logging to: " + logFilePath);
+            }
+            else
+            {
+                Trace.TraceError("Failed to retrieve TEMP environment variable.");
+            }
         }
 
         private void InboxItemAdded(object Item)
