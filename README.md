@@ -87,7 +87,7 @@ Logs are written to a file in the `%TEMP%CrmOutlookAddIn.log`.
 1. Start Outlook after installing the add-in.
 2. The add-in will automatically monitor your Inbox and Sent Items folders.
 3. Emails with a subject containing a ticket ID (e.g., `[id:1234] Addins Bugs Post.`) will be logged to the corresponding Redmine issue.
-4. Use the right click context menu to manually create a "New Redmine Tick" from a selected email.
+4. Use the right click context menu to manually create a "New Redmine Ticket" from a selected email.
 
 ## Troubleshooting
 - Ensure the `user.config` file is correctly configured.
