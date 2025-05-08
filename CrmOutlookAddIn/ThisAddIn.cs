@@ -141,6 +141,7 @@ namespace CrmOutlookAddIn
 
                     // Get existing comments
                     string getUrl = $"{redmineUrl}/issues/{issueId}.json?include=journals";
+                    Trace.TraceInformation($"Sending journal request to Redmine: {getUrl}");
                     HttpResponseMessage getResponse = await client.GetAsync(getUrl);
                     if (!getResponse.IsSuccessStatusCode)
                     {
