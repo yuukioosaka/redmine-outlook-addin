@@ -59,6 +59,11 @@ Below is an example configuration file and instructions for each setting:
             <setting name="ReplyDelimiter4" serializeAs="String">
                 <value>^\d{4}年\d{1,2}月\d{1,2}日(.+) \d{1,2}:\d{2} .+ .+@.+..+:</value>
             </setting>
+            <!-- Use alternative httpclient curl for bypass proxyservers -->
+            <setting name="UseCurlClient" serializeAs="String">
+                <value>False</value>
+            </setting>
+
             <setting name="Init" serializeAs="String">
                 <value>initialized</value>
             </setting>
@@ -73,6 +78,7 @@ Below is an example configuration file and instructions for each setting:
 2. **RedmineApiKey**: Your Redmine API key. This is required for authentication.
 3. **idprefix**: The prefix used in email subjects to identify Redmine ticket IDs. Example Your Email Title indicate ticket id 1234: `id:1234`.
 4. **ReplyDelimiterX**: Regular expressions to detect quoted text in email replies. These delimiters help trim unnecessary content when logging email bodies to Redmine.
+5. **UseCurlClient**: Use this if you want bypass your corporate proxy servers block Redmine Access.
 
 ### Logging
 Logs are written to a file in the `%TEMP%CrmOutlookAddIn.log`. 
