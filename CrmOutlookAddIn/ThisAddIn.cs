@@ -140,7 +140,7 @@ namespace CrmOutlookAddIn
 
                 string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm:ss");
 
-                using (HttpClient client = new HttpClient())
+                using (HttpClient client = new HttpClient(handler))
                 {
                     client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
@@ -176,7 +176,7 @@ namespace CrmOutlookAddIn
                     }
                 }
 
-                using (HttpClient client = new HttpClient())
+                using (HttpClient client = new HttpClient(handler))
                 {
                     client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
