@@ -172,6 +172,8 @@ namespace CrmOutlookAddIn
 
                 using (HttpClient client = new HttpClient())
                 {
+                    client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
+
                     string trimmedBody = TrimQuotedText(mail.Body);
 
                     var issueContent = new
@@ -195,7 +197,7 @@ namespace CrmOutlookAddIn
                     string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
                     Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
 
-                    HttpResponseMessage response = await client.PutAsync(requestUrl, content);
+                    HttpResponseMessage response = await client.PostAsync(requestUrl, content);
 
                     if (!response.IsSuccessStatusCode)
                     {
