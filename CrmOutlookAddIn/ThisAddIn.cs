@@ -149,7 +149,8 @@ namespace CrmOutlookAddIn
                     if (!getResponse.IsSuccessStatusCode)
                     {
                         string errorMessage = await getResponse.Content.ReadAsStringAsync();
-                        throw new System.Exception($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
+                        Trace.TraceInformation($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
+                        return; // Skip registration
                     }
 
                     string issueJson = await getResponse.Content.ReadAsStringAsync();
