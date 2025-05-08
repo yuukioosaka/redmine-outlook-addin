@@ -23,7 +23,7 @@ This project is built using C# and targets the .NET Framework 4.8.
 Before using the add-in, you need to configure the `user.config` file. 
 This file contains essential settings for connecting to Redmine and customizing the behavior of the add-in.  
 you can find user.config below  
-%LOCALAPPDATA%\Local\Apps\2.0\Data\[randomid]\crmo..vsto_[randomid]\Data\16.0.18730.20122  
+%LOCALAPPDATA%\Apps\2.0\Data\{randomid}\crmo..vsto_{randomid}\Data\16.0.18730.20122  
 ex)  
 C:\Users\username\AppData\Local\Apps\2.0\Data\TZ13HK22.WN8\0TO1CPPV.XHW\crmo..vsto_061175295e4e6d57_0001.0000_7ac4fe303c687902\Data\16.0.18730.20122
 
@@ -81,10 +81,10 @@ Below is an example configuration file and instructions for each setting:
 5. **UseCurlClient**: Use this if you want bypass your corporate proxy servers block Redmine Access.
 
 ### Logging
-Logs are written to a file in the `%TEMP%CrmOutlookAddIn.log`. 
+Logs are written to a file in the `%TEMP%\CrmOutlookAddIn.log`. 
 
 ## Usage
-1. Start Outlook after installing the add-in.
+1. Start Outlook (classic) and then close it. The "user.config" file will be created automatically.
 2. The add-in will automatically monitor your Inbox and Sent Items folders.
 3. Emails with a subject containing a ticket ID (e.g., `[id:1234] Addins Bugs Post.`) will be logged to the corresponding Redmine issue.
 4. Use the right click context menu to manually create a "New Redmine Ticket" from a selected email.
