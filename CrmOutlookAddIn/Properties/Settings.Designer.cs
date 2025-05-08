@@ -122,12 +122,12 @@ namespace CrmOutlookAddIn.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool UseProxy {
+        public bool UseCurlClient {
             get {
-                return ((bool)(this["UseProxy"]));
+                return ((bool)(this["UseCurlClient"]));
             }
             set {
-                this["UseProxy"] = value;
+                this["UseCurlClient"] = value;
             }
         }
     }

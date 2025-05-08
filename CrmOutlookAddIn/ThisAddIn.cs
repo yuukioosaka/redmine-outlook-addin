@@ -5,7 +5,6 @@ using System.Text;
 using Microsoft.Office.Interop.Outlook;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Configuration;
 using System.Net.Http;
 using Microsoft.Office.Core;
 
@@ -48,7 +47,8 @@ namespace CrmOutlookAddIn
                 Properties.Settings.Default.ReplyDelimiter2 = Properties.Settings.Default.ReplyDelimiter2;
                 Properties.Settings.Default.ReplyDelimiter3 = Properties.Settings.Default.ReplyDelimiter3;
                 Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
-                Properties.Settings.Default.UseProxy = Properties.Settings.Default.UseProxy;
+                Properties.Settings.Default.UseCurlClient = Properties.Settings.Default.UseCurlClient;
+                
                 Properties.Settings.Default.Save();
             }
 
@@ -137,7 +137,8 @@ namespace CrmOutlookAddIn
 
                 string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm:ss");
 
-                using (HttpClient client = new HttpClient(new HttpClientHandler() { UseProxy = Properties.Settings.Default.UseProxy }))
+                // 既存コメントの重複チェックはHttpClientで実施（curlでのGETは省略）
+                using (HttpClient client = new HttpClient())
                 {
                     client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
@@ -173,40 +174,83 @@ namespace CrmOutlookAddIn
                     }
                 }
 
-                using (HttpClient client = new HttpClient(new HttpClientHandler() { UseProxy = Properties.Settings.Default.UseProxy }))
+                string trimmedBody = TrimQuotedText(mail.Body);
+
+                var issueContent = new
                 {
-                    client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
-
-                    string trimmedBody = TrimQuotedText(mail.Body);
-
-                    var issueContent = new
+                    issue = new
                     {
-                        issue = new
-                        {
-                            notes = $"SentOn: {sentOnString}\n" +
-                                $"Subject: {mail.Subject ?? "No Subject"}\n" +
-                                $"Sender: {senderEmail}\n" +
-                                $"Recipients: {string.Join(";", mail.Recipients.Cast<Recipient>().Select(r => (string)GetSmtpAddress(r.AddressEntry)))}\n\n" +
-                                $"{trimmedBody?.Substring(0, Math.Min(trimmedBody.Length, 1000)) ?? "No Body"}"
-                        }
+                        notes = $"SentOn: {sentOnString}\n" +
+                            $"Subject: {mail.Subject ?? "No Subject"}\n" +
+                            $"Sender: {senderEmail}\n" +
+                            $"Recipients: {string.Join(";", mail.Recipients.Cast<Recipient>().Select(r => (string)GetSmtpAddress(r.AddressEntry)))}\n\n" +
+                            $"{trimmedBody?.Substring(0, Math.Min(trimmedBody.Length, 1000)) ?? "No Body"}"
+                    }
+                };
+
+                string jsonBody = System.Text.Json.JsonSerializer.Serialize(issueContent);
+
+                if (Properties.Settings.Default.UseCurlClient)
+                {
+                    // --- curlコマンドでPUT ---
+                    string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
+                    // Windowsコマンドライン用にエスケープ
+                    string escapedJson = jsonBody.Replace("\"", "\\\"");
+
+                    // curlコマンド組み立て
+                    string arguments = $"-X PUT \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\"";
+
+                    Trace.TraceInformation($"Executing curl: curl {arguments}");
+
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "curl",
+                        Arguments = arguments,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
                     };
 
-                    var content = new StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(issueContent)
-                        , Encoding.UTF8
-                        , "application/json"
-                    );
-
-                    string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
-                    Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
-                    Trace.TraceInformation(System.Text.Json.JsonSerializer.Serialize(issueContent));
-
-                    HttpResponseMessage response = await client.PutAsync(requestUrl, content);
-
-                    if (!response.IsSuccessStatusCode)
+                    using (var process = new Process { StartInfo = psi })
                     {
-                        string errorMessage = await response.Content.ReadAsStringAsync();
-                        throw new System.Exception($"Failed to register note to Redmine: {response.StatusCode} - {errorMessage}");
+                        process.Start();
+                        string output = process.StandardOutput.ReadToEnd();
+                        string error = process.StandardError.ReadToEnd();
+                        process.WaitForExit();
+
+                        Trace.TraceInformation($"curl output: {output}");
+                        if (process.ExitCode != 0)
+                        {
+                            Trace.TraceError($"curl error: {error}");
+                            throw new System.Exception($"curl failed: {error}");
+                        }
+                    }
+                }
+                else
+                {
+                    // --- 既存のHttpClientでPUT ---
+                    using (HttpClient client = new HttpClient())
+                    {
+                        client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
+
+                        var content = new StringContent(
+                            jsonBody,
+                            Encoding.UTF8,
+                            "application/json"
+                        );
+
+                        string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
+                        Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
+                        Trace.TraceInformation(jsonBody);
+
+                        HttpResponseMessage response = await client.PutAsync(requestUrl, content);
+
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            string errorMessage = await response.Content.ReadAsStringAsync();
+                            throw new System.Exception($"Failed to register note to Redmine: {response.StatusCode} - {errorMessage}");
+                        }
                     }
                 }
             }

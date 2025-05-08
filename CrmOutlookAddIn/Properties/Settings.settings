@@ -26,7 +26,7 @@
     <Setting Name="Init" Type="System.String" Scope="User">
       <Value Profile="(Default)">dummy</Value>
     </Setting>
-    <Setting Name="UseProxy" Type="System.Boolean" Scope="User">
+    <Setting Name="UseCurlClient" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
