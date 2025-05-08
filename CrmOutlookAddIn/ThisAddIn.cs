@@ -47,6 +47,7 @@ namespace CrmOutlookAddIn
                 Properties.Settings.Default.ReplyDelimiter2 = Properties.Settings.Default.ReplyDelimiter2;
                 Properties.Settings.Default.ReplyDelimiter3 = Properties.Settings.Default.ReplyDelimiter3;
                 Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
+                Properties.Settings.Default.UseProxy = Properties.Settings.Default.UseProxy;
                 Properties.Settings.Default.Save();
             }
 
@@ -121,6 +122,10 @@ namespace CrmOutlookAddIn
         {
             try
             {
+                var handler = new HttpClientHandler()
+                {
+                    UseProxy = Properties.Settings.Default.UseProxy
+                };
                 string redmineUrl = Properties.Settings.Default.RedmineUrl;
                 string apiKey = Properties.Settings.Default.RedmineApiKey;
                 string senderEmail = GetSmtpAddress(mail.Sender);
