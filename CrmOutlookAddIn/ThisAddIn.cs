@@ -197,7 +197,7 @@ namespace CrmOutlookAddIn
                     string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
                     Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
 
-                    HttpResponseMessage response = await client.PostAsync(requestUrl, content);
+                    HttpResponseMessage response = await client.PutAsync(requestUrl, content);
 
                     if (!response.IsSuccessStatusCode)
                     {
