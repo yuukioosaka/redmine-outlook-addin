@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Net.Http;
 using Microsoft.Office.Core;
+using System.Text.RegularExpressions;
 
 namespace CrmOutlookAddIn
 {
@@ -302,7 +303,7 @@ namespace CrmOutlookAddIn
             // Detect previous mail part using regular expression
             foreach (var delimiter in replyDelimiters)
             {
-                var match = System.Text.RegularExpressions.Regex.Match(body, delimiter, System.Text.RegularExpressions.RegexOptions.Multiline);
+                var match = Regex.Match(body, delimiter, RegexOptions.Multiline | RegexOptions.IgnoreCase);
                 if (match.Success)
                 {
                     return body.Substring(0, match.Index).Trim(); // Return part before header

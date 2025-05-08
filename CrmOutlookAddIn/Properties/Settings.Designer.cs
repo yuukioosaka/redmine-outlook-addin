@@ -85,7 +85,7 @@ namespace CrmOutlookAddIn.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("^-----Original Message-----")]
+        [global::System.Configuration.DefaultSettingValueAttribute("^.*-Original Message-.*")]
         public string ReplyDelimiter3 {
             get {
                 return ((string)(this["ReplyDelimiter3"]));

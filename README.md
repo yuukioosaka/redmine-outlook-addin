@@ -54,7 +54,7 @@ Below is an example configuration file and instructions for each setting:
                 <value>^From: .+</value>
             </setting>
             <setting name="ReplyDelimiter3" serializeAs="String">
-                <value>^-----Original Message-----</value>
+                <value>^-Original Message-</value>
             </setting>
             <setting name="ReplyDelimiter4" serializeAs="String">
                 <value>^\d{4}年\d{1,2}月\d{1,2}日(.+) \d{1,2}:\d{2} .+ .+@.+..+:</value>
