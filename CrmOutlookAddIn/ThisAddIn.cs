@@ -190,14 +190,13 @@ namespace CrmOutlookAddIn
                     };
 
                     var content = new StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(issueContent),
-                        Encoding.UTF8,
-                        "application/json"
+                        System.Text.Json.JsonSerializer.Serialize(issueContent)
                     );
 
                     string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
                     Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
-
+                    Trace.TraceInformation(System.Text.Json.JsonSerializer.Serialize(issueContent));
+                    
                     HttpResponseMessage response = await client.PutAsync(requestUrl, content);
 
                     if (!response.IsSuccessStatusCode)
