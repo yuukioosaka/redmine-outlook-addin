@@ -191,6 +191,8 @@ namespace CrmOutlookAddIn
 
                     var content = new StringContent(
                         System.Text.Json.JsonSerializer.Serialize(issueContent)
+                        , Encoding.UTF8
+                        , "application/json"
                     );
 
                     string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
