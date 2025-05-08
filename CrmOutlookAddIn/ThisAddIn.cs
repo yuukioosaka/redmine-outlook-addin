@@ -168,7 +168,10 @@ namespace CrmOutlookAddIn
                             }
                         }
                     }
+                }
 
+                using (HttpClient client = new HttpClient())
+                {
                     string trimmedBody = TrimQuotedText(mail.Body);
 
                     var issueContent = new
