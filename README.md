@@ -44,7 +44,7 @@ Below is an example configuration file and instructions for each setting:
             </setting>
             <!-- Prefix for ticket IDs in email subjects -->
             <setting name="idprefix" serializeAs="String">
-                <value>id:</value>
+                <value>\[id:</value>
             </setting>
             <!-- Delimiters for detecting quoted text in email replies -->
             <setting name="ReplyDelimiter1" serializeAs="String">
@@ -76,7 +76,7 @@ Below is an example configuration file and instructions for each setting:
 ### Key Settings
 1. **RedmineUrl**: The base URL of your Redmine instance. Example: `http://localhost:3000`.
 2. **RedmineApiKey**: Your Redmine API key. This is required for authentication.
-3. **idprefix**: The prefix used in email subjects to identify Redmine ticket IDs. Example Your Email Title indicate ticket id 1234: `id:1234`.
+3. **idprefix**: The prefix used in email subjects to identify Redmine ticket IDs. Example Your Email Title indicate ticket id 1234: `[id:1234]`.
 4. **ReplyDelimiterX**: Regular expressions to detect quoted text in email replies. These delimiters help trim unnecessary content when logging email bodies to Redmine.
 5. **UseCurlClient**: Use this if you want bypass your corporate proxy servers block Redmine Access.
 

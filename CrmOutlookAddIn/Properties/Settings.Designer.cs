@@ -49,7 +49,7 @@ namespace CrmOutlookAddIn.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("id:")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\[id:")]
         public string idprefix {
             get {
                 return ((string)(this["idprefix"]));
