@@ -38,7 +38,8 @@ namespace CrmOutlookAddIn
             MAPIFolder sent = outlookApp.Session.GetDefaultFolder(OlDefaultFolders.olFolderSentMail);
             sentItems = sent.Items;
             sentItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(SentItemAdded);
-            if (Properties.Settings.Default.Init != "initialized") { 
+            if (Properties.Settings.Default.Init != "initialized")
+            {
                 Properties.Settings.Default.Init = "initialized";
                 Properties.Settings.Default.RedmineUrl = Properties.Settings.Default.RedmineUrl;
                 Properties.Settings.Default.RedmineApiKey = Properties.Settings.Default.RedmineApiKey;
@@ -122,10 +123,6 @@ namespace CrmOutlookAddIn
         {
             try
             {
-                var handler = new HttpClientHandler()
-                {
-                    UseProxy = Properties.Settings.Default.UseProxy
-                };
                 string redmineUrl = Properties.Settings.Default.RedmineUrl;
                 string apiKey = Properties.Settings.Default.RedmineApiKey;
                 string senderEmail = GetSmtpAddress(mail.Sender);
@@ -140,7 +137,7 @@ namespace CrmOutlookAddIn
 
                 string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm:ss");
 
-                using (HttpClient client = new HttpClient(handler))
+                using (HttpClient client = new HttpClient(new HttpClientHandler() { UseProxy = Properties.Settings.Default.UseProxy }))
                 {
                     client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
@@ -176,7 +173,7 @@ namespace CrmOutlookAddIn
                     }
                 }
 
-                using (HttpClient client = new HttpClient(handler))
+                using (HttpClient client = new HttpClient(new HttpClientHandler() { UseProxy = Properties.Settings.Default.UseProxy }))
                 {
                     client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
@@ -203,7 +200,7 @@ namespace CrmOutlookAddIn
                     string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
                     Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
                     Trace.TraceInformation(System.Text.Json.JsonSerializer.Serialize(issueContent));
-                    
+
                     HttpResponseMessage response = await client.PutAsync(requestUrl, content);
 
                     if (!response.IsSuccessStatusCode)
