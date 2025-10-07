@@ -19,15 +19,9 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2
-
-    - name: Restore NuGet packages
-      run: nuget restore CrmOutlookAddIn\CrmOutlookAddIn.csproj
-      
-    - name: Build VSTO project
+    - name: Restore and Build VSTO project
       run: |
-        msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\
+        msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /restore /target:Publish /p:Configuration=Release /p:PublishDir=publish\
 
     - name: Archive publish folder
       run: |
