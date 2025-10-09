@@ -142,7 +142,7 @@ namespace CrmOutlookAddIn
                         return; // Skip registration
                     }
 
-                    string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm:ss");
+                    string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm");
 
                     // 既存コメントの重複チェックはHttpClientで実施（curlでのGETは省略）
                     using (HttpClient client = new HttpClient())
