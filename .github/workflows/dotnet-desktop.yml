@@ -16,18 +16,9 @@ jobs:
       with:
         fetch-depth: 0
 
-    # nuget.exeをセットアップ
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2
-
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
       
-    # ★追加：NuGetパッケージを復元するステップ
-    # このステップでプロジェクトに必要なDLLがダウンロードされます
-    - name: Restore NuGet packages
-      run: nuget restore CrmOutlookAddIn\CrmOutlookAddIn.csproj
-
     - name: Build VSTO project
       run: |
         msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\
@@ -36,7 +27,7 @@ jobs:
       run: |
         powershell -Command "Compress-Archive -Path CrmOutlookAddIn\publish\* -DestinationPath ClickOnceSetup.zip"
 
-    - name: Upload build artifacts
+    - name: Upload build artifacts (optional)
       uses: actions/upload-artifact@v4
       with:
         name: ClickOnceSetup
