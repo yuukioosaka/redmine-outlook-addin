@@ -21,6 +21,15 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
       
+    - name: Install System.Text.Json to GAC
+      shell: pwsh
+      run: |
+        Invoke-WebRequest -Uri https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile nuget.exe
+        ./nuget.exe install System.Text.Json -Version 8.0.5
+        $gacutilPath = "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\"
+        $env:PATH = "$gacutilPath;$env:PATH"
+        gacutil /i System.Text.Json.8.0.5\lib\net462\System.Text.Json.dll
+
     - name: Build VSTO project
       run: |
         msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\
