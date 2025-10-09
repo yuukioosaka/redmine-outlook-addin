@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Net.Http;
 using Microsoft.Office.Core;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace CrmOutlookAddIn
 {
@@ -161,22 +163,19 @@ namespace CrmOutlookAddIn
                         }
 
                         string issueJson = await getResponse.Content.ReadAsStringAsync();
-                        var issueDoc = System.Text.Json.JsonDocument.Parse(issueJson);
 
-                        // Search journals array and check if a note with the same SentOn exists
-                        if (issueDoc.RootElement.TryGetProperty("issue", out var issueElem) &&
-                            issueElem.TryGetProperty("journals", out var journalsElem))
+                        // Parse JSON using Newtonsoft.Json (Json.NET) and search journals for duplicate SentOn
+                        var issueObj = JObject.Parse(issueJson);
+                        var journals = issueObj["issue"]?["journals"] as JArray;
+                        if (journals != null)
                         {
-                            foreach (var journal in journalsElem.EnumerateArray())
+                            foreach (var journal in journals)
                             {
-                                if (journal.TryGetProperty("notes", out var notesElem))
+                                var notes = journal["notes"]?.ToString();
+                                if (!string.IsNullOrEmpty(notes) && notes.Contains($"SentOn: {sentOnString}"))
                                 {
-                                    string notes = notesElem.GetString();
-                                    if (!string.IsNullOrEmpty(notes) && notes.Contains($"SentOn: {sentOnString}"))
-                                    {
-                                        Trace.TraceInformation($"A comment with the same SentOn already exists, skipping registration: {sentOnString}");
-                                        return; // Avoid duplicate comments
-                                    }
+                                    Trace.TraceInformation($"A comment with the same SentOn already exists, skipping registration: {sentOnString}");
+                                    return; // Avoid duplicate comments
                                 }
                             }
                         }
@@ -196,7 +195,7 @@ namespace CrmOutlookAddIn
                         }
                     };
 
-                    string jsonBody = System.Text.Json.JsonSerializer.Serialize(issueContent);
+                    string jsonBody = JsonConvert.SerializeObject(issueContent);
 
                     if (Properties.Settings.Default.UseCurlClient)
                     {
