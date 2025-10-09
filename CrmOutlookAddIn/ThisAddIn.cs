@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using Microsoft.Office.Core;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 
 namespace CrmOutlookAddIn
 {
@@ -89,13 +90,13 @@ namespace CrmOutlookAddIn
         private void NotifyUserOfError(System.Exception ex, string mailSubject)
         {
             // Notify error with dialog
-            System.Windows.Forms.MessageBox.Show(
+            MessageBox.Show(
                 $"An error occurred while saving the email with subject '{mailSubject}' to the database.\n\n" +
                 $"Error Details:\n{ex.Message}\n\n" +
                 "Please check the system logs for more information.",
                 "Database Save Error",
-                System.Windows.Forms.MessageBoxButtons.OK,
-                System.Windows.Forms.MessageBoxIcon.Error
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
             );
         }
         private void ThisAddIn_Shutdown(object sender, EventArgs e)
@@ -152,15 +153,15 @@ namespace CrmOutlookAddIn
                         // Get existing comments
                         string getUrl = $"{redmineUrl}/issues/{issueId}.json?include=journals";
                         Trace.TraceInformation($"Sending journal request to Redmine: {getUrl}");
-                        HttpResponseMessage getResponse = await client.GetAsync(getUrl);
+                        HttpResponseMessage getResponse = await client.GetAsync(getUrl).ConfigureAwait(false);
                         if (!getResponse.IsSuccessStatusCode)
                         {
-                            string errorMessage = await getResponse.Content.ReadAsStringAsync();
+                            string errorMessage = await getResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
                             Trace.TraceInformation($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
                             return; // Skip registration
                         }
 
-                        string issueJson = await getResponse.Content.ReadAsStringAsync();
+                        string issueJson = await getResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
                         var issueDoc = System.Text.Json.JsonDocument.Parse(issueJson);
 
                         // Search journals array and check if a note with the same SentOn exists
@@ -252,11 +253,11 @@ namespace CrmOutlookAddIn
                             Trace.TraceInformation($"Sending request to Redmine: {requestUrl}");
                             Trace.TraceInformation(jsonBody);
 
-                            HttpResponseMessage response = await client.PutAsync(requestUrl, content);
+                            HttpResponseMessage response = await client.PutAsync(requestUrl, content).ConfigureAwait(false);
 
                             if (!response.IsSuccessStatusCode)
                             {
-                                string errorMessage = await response.Content.ReadAsStringAsync();
+                                string errorMessage = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                                 throw new System.Exception($"Failed to register note to Redmine: {response.StatusCode} - {errorMessage}");
                             }
                         }
@@ -274,7 +275,7 @@ namespace CrmOutlookAddIn
                         throw; // 最後のリトライでエラーが発生した場合は通知
                     }
                     // リトライ前に少し待機
-                    await Task.Delay(1000 * (retryCount + 1)); // リトライ間隔を増加させる
+                    await Task.Delay(1000 * (retryCount + 1)).ConfigureAwait(false); // リトライ間隔を増加させる
                 }
             }
         }
@@ -318,6 +319,8 @@ namespace CrmOutlookAddIn
             // Detect previous mail part using regular expression
             foreach (var delimiter in replyDelimiters)
             {
+                if(string.IsNullOrEmpty(delimiter)) continue;
+                
                 var match = Regex.Match(body, delimiter, RegexOptions.Multiline | RegexOptions.IgnoreCase);
                 if (match.Success)
                 {
@@ -343,7 +346,16 @@ namespace CrmOutlookAddIn
                 }
                 else
                 {
-                    return addressEntry.Address;
+                    try
+                    {
+                        // PR_SMTP_ADDRESS property
+                        const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
+                        return addressEntry.PropertyAccessor.GetProperty(PR_SMTP_ADDRESS) as string;
+                    }
+                    catch (System.Exception)
+                    {
+                        return addressEntry.Address;
+                    }
                 }
             }
             return "Unknown";
