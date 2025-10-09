@@ -211,11 +211,13 @@ namespace CrmOutlookAddIn
                         if (issueDoc.RootElement.TryGetProperty("issue", out var issueElem) &&
                             issueElem.TryGetProperty("journals", out var journalsElem))
                         {
+                            Trace.TraceInformation($"issueJson is not empty.");
                             foreach (var journal in journalsElem.EnumerateArray())
                             {
                                 if (journal.TryGetProperty("notes", out var notesElem))
                                 {
                                     string notes = notesElem.GetString();
+                                    Trace.TraceInformation(notes);
                                     if (!string.IsNullOrEmpty(notes) && notes.Contains($"SentOn: {sentOnString}"))
                                     {
                                         Trace.TraceInformation($"A comment with the same SentOn already exists, skipping registration: {sentOnString}");
@@ -223,6 +225,8 @@ namespace CrmOutlookAddIn
                                     }
                                 }
                             }
+                        } else {
+                            Trace.TraceInformation($"issueJson is empty.");
                         }
                     }
 
@@ -244,9 +248,11 @@ namespace CrmOutlookAddIn
                     };
 
                     string jsonBody = System.Text.Json.JsonSerializer.Serialize(issueContent);
+                    Trace.TraceInformation(jsonBody);
 
                     if (Properties.Settings.Default.UseCurlClient)
                     {
+                        Trace.TraceInformation("UseCurlClient enter");
                         // --- curlコマンドでPUT ---
                         string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
                         // Windowsコマンドライン用にエスケープ
@@ -269,10 +275,12 @@ namespace CrmOutlookAddIn
 
                         using (var process = new Process { StartInfo = psi })
                         {
+                            Trace.TraceInformation("process.Start()");
                             process.Start();
                             string output = process.StandardOutput.ReadToEnd();
                             string error = process.StandardError.ReadToEnd();
                             process.WaitForExit();
+                            Trace.TraceInformation("process.WaitForExit()");
 
                             Trace.TraceInformation($"curl output: {output}");
                             if (process.ExitCode != 0)
