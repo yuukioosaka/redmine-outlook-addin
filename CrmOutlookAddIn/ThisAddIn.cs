@@ -143,27 +143,70 @@ namespace CrmOutlookAddIn
                     }
 
                     string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm");
+                    string issueJson; // 両方の方式（curl/HttpClient）で使えるように外で宣言
 
-                    // 既存コメントの重複チェックはHttpClientで実施（curlでのGETは省略）
-                    using (HttpClient client = new HttpClient())
+                    // ▼▼▼▼▼ ここからが修正箇所 ▼▼▼▼▼
+
+                    // --- 既存コメントの重複チェック ---
+                    if (Properties.Settings.Default.UseCurlClient)
                     {
-                        client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
-
-                        // Get existing comments
+                        // --- curlでGET ---
                         string getUrl = $"{redmineUrl}/issues/{issueId}.json?include=journals";
-                        Trace.TraceInformation($"Sending journal request to Redmine: {getUrl}");
-                        HttpResponseMessage getResponse = await client.GetAsync(getUrl);
-                        if (!getResponse.IsSuccessStatusCode)
+                        string arguments = $"-X GET \"{getUrl}\" -H \"X-Redmine-API-Key: {apiKey}\"";
+
+                        Trace.TraceInformation($"Executing curl for GET: curl {arguments}");
+
+                        var psi = new ProcessStartInfo
                         {
-                            string errorMessage = await getResponse.Content.ReadAsStringAsync();
-                            Trace.TraceInformation($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
-                            return; // Skip registration
+                            FileName = "curl",
+                            Arguments = arguments,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        };
+
+                        using (var process = new Process { StartInfo = psi })
+                        {
+                            process.Start();
+                            issueJson = process.StandardOutput.ReadToEnd();
+                            string error = process.StandardError.ReadToEnd();
+                            process.WaitForExit();
+
+                            Trace.TraceInformation($"curl GET output: {issueJson}");
+                            if (process.ExitCode != 0)
+                            {
+                                Trace.TraceError($"curl GET error: {error}");
+                                Trace.TraceInformation($"Failed to get ticket information from Redmine using curl.");
+                                return; // Skip registration
+                            }
                         }
+                    }
+                    else
+                    {
+                        // --- 既存のHttpClientでGET ---
+                        using (HttpClient client = new HttpClient())
+                        {
+                            client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
-                        string issueJson = await getResponse.Content.ReadAsStringAsync();
+                            string getUrl = $"{redmineUrl}/issues/{issueId}.json?include=journals";
+                            Trace.TraceInformation($"Sending journal request to Redmine: {getUrl}");
+                            HttpResponseMessage getResponse = await client.GetAsync(getUrl);
+                            if (!getResponse.IsSuccessStatusCode)
+                            {
+                                string errorMessage = await getResponse.Content.ReadAsStringAsync();
+                                Trace.TraceInformation($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
+                                return; // Skip registration
+                            }
+
+                            issueJson = await getResponse.Content.ReadAsStringAsync();
+                        }
+                    }
+
+                    // --- 共通のJSON解析と重複チェックロジック ---
+                    if (!string.IsNullOrEmpty(issueJson))
+                    {
                         var issueDoc = System.Text.Json.JsonDocument.Parse(issueJson);
-
-                        // Search journals array and check if a note with the same SentOn exists
                         if (issueDoc.RootElement.TryGetProperty("issue", out var issueElem) &&
                             issueElem.TryGetProperty("journals", out var journalsElem))
                         {
@@ -181,6 +224,9 @@ namespace CrmOutlookAddIn
                             }
                         }
                     }
+
+                    // ▲▲▲▲▲ ここまでが修正箇所 ▲▲▲▲▲
+
 
                     string trimmedBody = TrimQuotedText(mail.Body);
 
