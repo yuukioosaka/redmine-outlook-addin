@@ -207,7 +207,9 @@ namespace CrmOutlookAddIn
                     // --- 共通のJSON解析と重複チェックロジック ---
                     if (!string.IsNullOrEmpty(issueJson))
                     {
+                        Trace.TraceInformation("before JsonDocument.Parse");
                         var issueDoc = System.Text.Json.JsonDocument.Parse(issueJson);
+                        Trace.TraceInformation("after JsonDocument.Parse");
                         if (issueDoc.RootElement.TryGetProperty("issue", out var issueElem) &&
                             issueElem.TryGetProperty("journals", out var journalsElem))
                         {
