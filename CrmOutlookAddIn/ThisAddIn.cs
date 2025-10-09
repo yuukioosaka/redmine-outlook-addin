@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Net.Http;
 using Microsoft.Office.Core;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 
 namespace CrmOutlookAddIn
 {
@@ -90,13 +89,13 @@ namespace CrmOutlookAddIn
         private void NotifyUserOfError(System.Exception ex, string mailSubject)
         {
             // Notify error with dialog
-            MessageBox.Show(
+            System.Windows.Forms.MessageBox.Show(
                 $"An error occurred while saving the email with subject '{mailSubject}' to the database.\n\n" +
                 $"Error Details:\n{ex.Message}\n\n" +
                 "Please check the system logs for more information.",
                 "Database Save Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error
+                System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Error
             );
         }
         private void ThisAddIn_Shutdown(object sender, EventArgs e)
@@ -320,7 +319,7 @@ namespace CrmOutlookAddIn
             foreach (var delimiter in replyDelimiters)
             {
                 if(string.IsNullOrEmpty(delimiter)) continue;
-                
+
                 var match = Regex.Match(body, delimiter, RegexOptions.Multiline | RegexOptions.IgnoreCase);
                 if (match.Success)
                 {
