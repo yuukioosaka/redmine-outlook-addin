@@ -163,7 +163,8 @@ namespace CrmOutlookAddIn
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
                             UseShellExecute = false,
-                            CreateNoWindow = true
+                            CreateNoWindow = true,
+                            StandardOutputEncoding = System.Text.Encoding.UTF8
                         };
 
                         using (var process = new Process { StartInfo = psi })
