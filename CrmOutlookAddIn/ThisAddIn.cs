@@ -29,46 +29,72 @@ namespace CrmOutlookAddIn
 
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
+            // --- UIスレッドで実行が必須の処理 ---
+            // これらはOutlookのオブジェクトモデルにアクセスするため、必ずUIスreadで実行する必要があります。
+            // 通常は高速に完了するため、Startupの応答性にはほとんど影響しません。
             outlookApp = this.Application;
 
-            // Monitor Inbox
+            // 受信トレイの監視設定
             MAPIFolder inbox = outlookApp.Session.GetDefaultFolder(OlDefaultFolders.olFolderInbox);
             inboxItems = inbox.Items;
             inboxItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(InboxItemAdded);
 
-            // Monitor Sent Items
+            // 送信済みアイテムの監視設定
             MAPIFolder sent = outlookApp.Session.GetDefaultFolder(OlDefaultFolders.olFolderSentMail);
             sentItems = sent.Items;
             sentItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(SentItemAdded);
-            if (Properties.Settings.Default.Init != "initialized")
-            {
-                Properties.Settings.Default.Init = "initialized";
-                Properties.Settings.Default.RedmineUrl = Properties.Settings.Default.RedmineUrl;
-                Properties.Settings.Default.RedmineApiKey = Properties.Settings.Default.RedmineApiKey;
-                Properties.Settings.Default.idprefix = Properties.Settings.Default.idprefix;
-                Properties.Settings.Default.ReplyDelimiter1 = Properties.Settings.Default.ReplyDelimiter1;
-                Properties.Settings.Default.ReplyDelimiter2 = Properties.Settings.Default.ReplyDelimiter2;
-                Properties.Settings.Default.ReplyDelimiter3 = Properties.Settings.Default.ReplyDelimiter3;
-                Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
-                Properties.Settings.Default.UseCurlClient = Properties.Settings.Default.UseCurlClient;
 
-                Properties.Settings.Default.Save();
-            }
+            // --- バックグラウンドで実行可能な初期化処理 ---
+            // 設定の初期化やログファイルのセットアップなど、UIスレッドをブロックする可能性のある処理を
+            // Task.Run を使って別スレッドで実行し、Outlookの起動を高速化します。
+            Task.Run(() => InitializeInBackground());
+        }
 
-            // Add a TextWriterTraceListener to log to %TEMP% directory
-            string tempPath = Environment.GetEnvironmentVariable("TEMP");
-            if (!string.IsNullOrEmpty(tempPath))
+        /// <summary>
+        /// バックグラウンドスレッドで実行する初期化処理をまとめたメソッド。
+        /// </summary>
+        private void InitializeInBackground()
+        {
+            try
             {
-                string logFilePath = System.IO.Path.Combine(tempPath, "CrmOutlookAddIn.log");
-                var listener = new TextWriterTraceListener(logFilePath);
-                listener.TraceOutputOptions = TraceOptions.DateTime; // タイムスタンプを付与
-                Trace.Listeners.Add(listener);
-                Trace.AutoFlush = true; // Ensure logs are written immediately
-                Trace.TraceInformation("Trace listener initialized. Logging to: " + logFilePath);
+                // 設定の初期化 (初回起動時のみ)
+                // この処理はファイルI/Oを伴う可能性があるため、バックグラウンドで実行します。
+                if (Properties.Settings.Default.Init != "initialized")
+                {
+                    Properties.Settings.Default.Init = "initialized";
+                    Properties.Settings.Default.RedmineUrl = Properties.Settings.Default.RedmineUrl;
+                    Properties.Settings.Default.RedmineApiKey = Properties.Settings.Default.RedmineApiKey;
+                    Properties.Settings.Default.idprefix = Properties.Settings.Default.idprefix;
+                    Properties.Settings.Default.ReplyDelimiter1 = Properties.Settings.Default.ReplyDelimiter1;
+                    Properties.Settings.Default.ReplyDelimiter2 = Properties.Settings.Default.ReplyDelimiter2;
+                    Properties.Settings.Default.ReplyDelimiter3 = Properties.Settings.Default.ReplyDelimiter3;
+                    Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
+                    Properties.Settings.Default.UseCurlClient = Properties.Settings.Default.UseCurlClient;
+
+                    Properties.Settings.Default.Save();
+                }
+
+                // トレースリスナーの初期化
+                // ログファイルのセットアップもファイルI/Oを伴うため、バックグラウンドで行います。
+                string tempPath = Environment.GetEnvironmentVariable("TEMP");
+                if (!string.IsNullOrEmpty(tempPath))
+                {
+                    string logFilePath = System.IO.Path.Combine(tempPath, "CrmOutlookAddIn.log");
+                    var listener = new TextWriterTraceListener(logFilePath);
+                    listener.TraceOutputOptions = TraceOptions.DateTime; // タイムスタンプを付与
+                    Trace.Listeners.Add(listener);
+                    Trace.AutoFlush = true; // ログがすぐに書き込まれるようにする
+                    Trace.TraceInformation("Background initialization complete. Logging to: " + logFilePath);
+                }
+                else
+                {
+                    Trace.TraceError("Failed to retrieve TEMP environment variable during background initialization.");
+                }
             }
-            else
+            catch (System.Exception ex)
             {
-                Trace.TraceError("Failed to retrieve TEMP environment variable.");
+                // バックグラウンドスレッドで発生した例外は検知しにくいため、必ずログに記録します。
+                Trace.TraceError($"An error occurred during background initialization: {ex.ToString()}");
             }
         }
 
@@ -331,13 +357,24 @@ namespace CrmOutlookAddIn
         {
             if (addressEntry != null)
             {
+                // PR_SMTP_ADDRESS property tag
+                const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
                 if (addressEntry.AddressEntryUserType == OlAddressEntryUserType.olExchangeUserAddressEntry ||
                     addressEntry.AddressEntryUserType == OlAddressEntryUserType.olExchangeRemoteUserAddressEntry)
                 {
-                    var exchUser = addressEntry.GetExchangeUser();
-                    if (exchUser != null)
+                    try
                     {
-                        return exchUser.PrimarySmtpAddress;
+                        // Try to get the SMTP address from the PropertyAccessor first
+                        return addressEntry.PropertyAccessor.GetProperty(PR_SMTP_ADDRESS).ToString();
+                    }
+                    catch (System.Exception)
+                    {
+                        // Fallback to GetExchangeUser() if PropertyAccessor fails
+                        var exchUser = addressEntry.GetExchangeUser();
+                        if (exchUser != null)
+                        {
+                            return exchUser.PrimarySmtpAddress;
+                        }
                     }
                 }
                 else
@@ -347,6 +384,7 @@ namespace CrmOutlookAddIn
             }
             return "Unknown";
         }
+
 
         public void SaveToRedmine(IRibbonControl control)
         {
