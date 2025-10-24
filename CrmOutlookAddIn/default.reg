@@ -1,0 +1,31 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\CrmOutlookAddIn]
+; -------------------------------------------------------------------
+; CrmOutlookAddIn の設定ファイル (XMLコンフィグベース)
+; -------------------------------------------------------------------
+
+; --- 一般設定 ---
+; 初期化済みフラグ（変更不要）
+"Init"="initialized"
+
+; --- Redmine 接続設定 ---
+; RedmineのURL
+"RedmineUrl"="http://localhost:3000"
+; Redmine APIキー
+"RedmineApiKey"="9b3572bf4f2cccdcdd0c254371a38babeb1004c7"
+
+; --- メール解析設定 ---
+; Redmineチケット番号を識別するための接頭辞 (正規表現)
+"idprefix"="\\[id:"
+
+; --- 引用文の区切り文字 (正規表現) ---
+; メールの返信部分を識別するための文字列。上から順に評価されます。
+"ReplyDelimiter1"="^On .+ wrote:"
+"ReplyDelimiter2"="^From: .+"
+"ReplyDelimiter3"="^-Original Message-"
+"ReplyDelimiter4"="^\\d{4}年\\d{1,2}月\\d{1,2}日(.+) \\d{1,2}:\\d{2} .+ .+@.+..+:"
+
+; --- 通信クライアント設定 ---
+; Redmineへの通信にcurlを使用するかどうか (0 = false, 1 = true)
+"UseCurlClient"=dword:00000001
