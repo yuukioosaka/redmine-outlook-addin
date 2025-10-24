@@ -69,7 +69,7 @@ namespace CrmOutlookAddIn
 
         public static string idprefix
         {
-            get => GetValue("idprefix", "#").ToString();
+            get => GetValue("idprefix", "[id-").ToString();
             set => SetValue("idprefix", value);
         }
 
@@ -158,6 +158,15 @@ namespace CrmOutlookAddIn
                     // 各設定値は、SettingsManagerがデフォルト値を返すため、
                     // ここで明示的に書き込む必要はありません。
                     SettingsManager.Init = "initialized";
+                    SettingsManager.idprefix = SettingsManager.idprefix;
+                    SettingsManager.RedmineApiKey = SettingsManager.RedmineApiKey;
+                    SettingsManager.RedmineUrl = SettingsManager.RedmineUrl;
+                    SettingsManager.ReplyDelimiter1 = SettingsManager.ReplyDelimiter1;
+                    SettingsManager.ReplyDelimiter2 = SettingsManager.ReplyDelimiter2;
+                    SettingsManager.ReplyDelimiter3 = SettingsManager.ReplyDelimiter3;
+                    SettingsManager.ReplyDelimiter4 = SettingsManager.ReplyDelimiter4;
+                    SettingsManager.UseCurlClient = SettingsManager.UseCurlClient;
+
                     Trace.TraceInformation("First time initialization. Settings will use default values from registry.");
                 }
                 // --- ▲▲▲ 変更点 ▲▲▲ ---
