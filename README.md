@@ -14,82 +14,77 @@ This project is built using C# and targets the .NET Framework 4.8.
 - .NET Framework 4.8 installed on the system.
 
 ## Installation
+
 - Download ClickOnceSetup.zip from Releases
-  - https://github.com/yuukioosaka/redmine-outlook-addin/releases
+  - [https://github.com/yuukioosaka/redmine-outlook-addin/releases](https://github.com/yuukioosaka/redmine-outlook-addin/releases)
 - extract and run Setup.exe
-- Start Outlook(classic), and Close. "user.config" will create automatically.
+- Start Outlook(classic). The registry settings will be created automatically with default values.
 
 ## Configuration
-Before using the add-in, you need to configure the `user.config` file. 
-This file contains essential settings for connecting to Redmine and customizing the behavior of the add-in.  
-you can find user.config below  
-%LOCALAPPDATA%\Apps\2.0\Data\{randomid}\crmo..vsto_{randomid}\Data\16.0.18730.20122  
-ex)  
-C:\Users\username\AppData\Local\Apps\2.0\Data\TZ13HK22.WN8\0TO1CPPV.XHW\crmo..vsto_061175295e4e6d57_0001.0000_7ac4fe303c687902\Data\16.0.18730.20122
 
-### Configuration File: `user.config`
-Below is an example configuration file and instructions for each setting:
-```
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-    <userSettings>
-        <CrmOutlookAddIn.Properties.Settings>
-            <!-- Redmine URL --> 
-            <setting name="RedmineUrl" serializeAs="String">
-                <value>http://localhost:3000</value>
-            </setting>
-            <!-- Redmine API Key -->
-            <setting name="RedmineApiKey" serializeAs="String">
-                <value>9b3572bf4f2cccdcdd0c254371a38babeb1004c7</value>
-            </setting>
-            <!-- Prefix for ticket IDs in email subjects -->
-            <setting name="idprefix" serializeAs="String">
-                <value>\[id:</value>
-            </setting>
-            <!-- Delimiters for detecting quoted text in email replies -->
-            <setting name="ReplyDelimiter1" serializeAs="String">
-                <value>^On .+ wrote:</value>
-            </setting>
-            <setting name="ReplyDelimiter2" serializeAs="String">
-                <value>^From: .+</value>
-            </setting>
-            <setting name="ReplyDelimiter3" serializeAs="String">
-                <value>^-Original Message-</value>
-            </setting>
-            <setting name="ReplyDelimiter4" serializeAs="String">
-                <value>^\d{4}年\d{1,2}月\d{1,2}日(.+) \d{1,2}:\d{2} .+ .+@.+..+:</value>
-            </setting>
-            <!-- Use alternative httpclient curl for bypass proxyservers -->
-            <setting name="UseCurlClient" serializeAs="String">
-                <value>False</value>
-            </setting>
+The add-in uses Windows Registry to store its settings. All settings are stored under the following registry key:
 
-            <setting name="Init" serializeAs="String">
-                <value>initialized</value>
-            </setting>
-        </CrmOutlookAddIn.Properties.Settings>
-    </userSettings>
-</configuration>
-...
+```registry
+HKEY_CURRENT_USER\Software\CrmOutlookAddIn
 ```
 
-### Key Settings
-1. **RedmineUrl**: The base URL of your Redmine instance. Example: `http://localhost:3000`.
-2. **RedmineApiKey**: Your Redmine API key. This is required for authentication.
-3. **idprefix**: The prefix used in email subjects to identify Redmine ticket IDs. Example Your Email Title indicate ticket id 1234: `[id:1234]`.
-4. **ReplyDelimiterX**: Regular expressions to detect quoted text in email replies. These delimiters help trim unnecessary content when logging email bodies to Redmine.
-5. **UseCurlClient**: Use this if you want bypass your corporate proxy servers block Redmine Access.
+You can modify the settings using the Windows Registry Editor (regedit.exe) or through PowerShell commands.
+
+### Registry Settings
+
+Below are the available registry settings and their descriptions:
+
+1. **RedmineUrl** (String)
+   - Default value: `http://redmine.example.com`
+   - The base URL of your Redmine instance
+
+2. **RedmineApiKey** (String)
+   - Default value: ""
+   - Your Redmine API key, required for authentication
+
+3. **idprefix** (String)
+   - Default value: "[id-"
+   - The prefix used in email subjects to identify Redmine ticket IDs
+   - Example: With default settings, an email with subject "[id-1234] Bug Fix" will be linked to ticket #1234
+
+4. **ReplyDelimiter1** through **ReplyDelimiter4** (String)
+   - Default values:
+     - ReplyDelimiter1: "From:"
+     - ReplyDelimiter2: "差出人:"
+     - ReplyDelimiter3: "-----Original Message-----"
+     - ReplyDelimiter4: "From "
+   - Regular expressions to detect quoted text in email replies
+   - These help trim unnecessary content when logging email bodies to Redmine
+
+5. **UseCurlClient** (DWORD)
+   - Default value: 0 (False)
+   - Set to 1 (True) if you want to bypass corporate proxy servers that block Redmine access
+
+### PowerShell Example
+
+You can use PowerShell to configure the settings. Here's an example:
+
+```powershell
+# Set Redmine URL
+Set-ItemProperty -Path "HKCU:\Software\CrmOutlookAddIn" -Name "RedmineUrl" -Value "http://your-redmine-server.com"
+
+# Set API Key
+Set-ItemProperty -Path "HKCU:\Software\CrmOutlookAddIn" -Name "RedmineApiKey" -Value "your-api-key-here"
+```
 
 ### Logging
-Logs are written to a file in the `%TEMP%\CrmOutlookAddIn.log`. 
+
+Logs are written to a file in the `%TEMP%\CrmOutlookAddIn.log`.
 
 ## Usage
-1. Start Outlook (classic) and then close it. The "user.config" file will be created automatically.
-2. The add-in will automatically monitor your Inbox and Sent Items folders.
-3. Emails with a subject containing a ticket ID (e.g., `[id:1234] Addins Bugs Post.`) will be logged to the corresponding Redmine issue.
-4. Use the right click context menu to manually create a "New Redmine Ticket" from a selected email.
+
+1. Start Outlook and the add-in will initialize with default registry settings
+2. The add-in will automatically monitor your Inbox and Sent Items folders
+3. Emails with a subject containing a ticket ID (e.g., `[id-1234] Addins Bugs Post`) will be logged to the corresponding Redmine issue
+4. Use the right click context menu to manually create a "New Redmine Ticket" from a selected email
 
 ## Troubleshooting
-- Ensure the `user.config` file is correctly configured.
-- Check the log file (`%TEMP%\CrmOutlookAddIn.log`) for detailed error messages.
-- Verify that your Redmine instance is accessible and the API key is valid.
+
+- Check the log file (`%TEMP%\CrmOutlookAddIn.log`) for detailed error messages
+- Verify that your Redmine instance is accessible and the API key is correctly configured in the registry
+- Ensure the registry settings under `HKEY_CURRENT_USER\Software\CrmOutlookAddIn` are properly configured
