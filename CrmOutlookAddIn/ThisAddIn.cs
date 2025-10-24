@@ -10,9 +10,102 @@ using Microsoft.Office.Core;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+// --- ▼▼▼ 変更点 ▼▼▼ ---
+// レジストリを操作するために必要なusingディレクティブを追加
+using Microsoft.Win32;
+// --- ▲▲▲ 変更点 ▲▲▲ ---
 
 namespace CrmOutlookAddIn
 {
+    // --- ▼▼▼ 変更点 ▼▼▼ ---
+    /// <summary>
+    /// レジストリから設定を管理する静的クラス。
+    /// HKEY_CURRENT_USER\Software\CrmOutlookAddIn に設定を保存します。
+    /// </summary>
+    public static class SettingsManager
+    {
+        private const string RegistryKeyPath = @"Software\CrmOutlookAddIn";
+
+        /// <summary>
+        /// レジストリから値を取得します。キーが存在しない場合はデフォルト値を返します。
+        /// </summary>
+        private static object GetValue(string key, object defaultValue)
+        {
+            using (RegistryKey regKey = Registry.CurrentUser.OpenSubKey(RegistryKeyPath))
+            {
+                return regKey?.GetValue(key, defaultValue) ?? defaultValue;
+            }
+        }
+
+        /// <summary>
+        /// レジストリに値を設定します。
+        /// </summary>
+        private static void SetValue(string key, object value)
+        {
+            using (RegistryKey regKey = Registry.CurrentUser.CreateSubKey(RegistryKeyPath))
+            {
+                regKey?.SetValue(key, value);
+            }
+        }
+
+        // 各設定項目に対応するプロパティ
+        public static string Init
+        {
+            get => GetValue("Init", "").ToString();
+            set => SetValue("Init", value);
+        }
+
+        public static string RedmineUrl
+        {
+            get => GetValue("RedmineUrl", "http://redmine.example.com").ToString();
+            set => SetValue("RedmineUrl", value);
+        }
+
+        public static string RedmineApiKey
+        {
+            get => GetValue("RedmineApiKey", "").ToString();
+            set => SetValue("RedmineApiKey", value);
+        }
+
+        public static string idprefix
+        {
+            get => GetValue("idprefix", "#").ToString();
+            set => SetValue("idprefix", value);
+        }
+
+        public static string ReplyDelimiter1
+        {
+            get => GetValue("ReplyDelimiter1", "From:").ToString();
+            set => SetValue("ReplyDelimiter1", value);
+        }
+
+        public static string ReplyDelimiter2
+        {
+            get => GetValue("ReplyDelimiter2", "差出人:").ToString();
+            set => SetValue("ReplyDelimiter2", value);
+        }
+
+        public static string ReplyDelimiter3
+        {
+            get => GetValue("ReplyDelimiter3", "-----Original Message-----").ToString();
+            set => SetValue("ReplyDelimiter3", value);
+        }
+
+        public static string ReplyDelimiter4
+        {
+            get => GetValue("ReplyDelimiter4", "From ").ToString();
+            set => SetValue("ReplyDelimiter4", value);
+        }
+
+        public static bool UseCurlClient
+        {
+            get => Convert.ToBoolean(GetValue("UseCurlClient", false));
+            set => SetValue("UseCurlClient", value);
+        }
+    }
+    // --- ▲▲▲ 変更点 ▲▲▲ ---
+
+
     public partial class ThisAddIn
     {
         private Application outlookApp;
@@ -57,22 +150,18 @@ namespace CrmOutlookAddIn
         {
             try
             {
-                // 設定の初期化 (初回起動時のみ)
-                // この処理はファイルI/Oを伴う可能性があるため、バックグラウンドで実行します。
-                if (Properties.Settings.Default.Init != "initialized")
+                // --- ▼▼▼ 変更点 ▼▼▼ ---
+                // configファイルの代わりにレジストリを利用して初期化済みかチェックします。
+                if (SettingsManager.Init != "initialized")
                 {
-                    Properties.Settings.Default.Init = "initialized";
-                    Properties.Settings.Default.RedmineUrl = Properties.Settings.Default.RedmineUrl;
-                    Properties.Settings.Default.RedmineApiKey = Properties.Settings.Default.RedmineApiKey;
-                    Properties.Settings.Default.idprefix = Properties.Settings.Default.idprefix;
-                    Properties.Settings.Default.ReplyDelimiter1 = Properties.Settings.Default.ReplyDelimiter1;
-                    Properties.Settings.Default.ReplyDelimiter2 = Properties.Settings.Default.ReplyDelimiter2;
-                    Properties.Settings.Default.ReplyDelimiter3 = Properties.Settings.Default.ReplyDelimiter3;
-                    Properties.Settings.Default.ReplyDelimiter4 = Properties.Settings.Default.ReplyDelimiter4;
-                    Properties.Settings.Default.UseCurlClient = Properties.Settings.Default.UseCurlClient;
-
-                    Properties.Settings.Default.Save();
+                    // 初回起動時は、レジストリに初期化済みフラグを書き込みます。
+                    // 各設定値は、SettingsManagerがデフォルト値を返すため、
+                    // ここで明示的に書き込む必要はありません。
+                    SettingsManager.Init = "initialized";
+                    Trace.TraceInformation("First time initialization. Settings will use default values from registry.");
                 }
+                // --- ▲▲▲ 変更点 ▲▲▲ ---
+
 
                 // トレースリスナーの初期化
                 // ログファイルのセットアップもファイルI/Oを伴うため、バックグラウンドで行います。
@@ -158,8 +247,12 @@ namespace CrmOutlookAddIn
             {
                 try
                 {
-                    string redmineUrl = Properties.Settings.Default.RedmineUrl;
-                    string apiKey = Properties.Settings.Default.RedmineApiKey;
+                    // --- ▼▼▼ 変更点 ▼▼▼ ---
+                    // SettingsManagerから設定を読み込みます
+                    string redmineUrl = SettingsManager.RedmineUrl;
+                    string apiKey = SettingsManager.RedmineApiKey;
+                    // --- ▲▲▲ 変更点 ▲▲▲ ---
+
                     string senderEmail = GetSmtpAddress(mail.Sender);
 
                     // Extract id:xxxx from subject
@@ -223,7 +316,9 @@ namespace CrmOutlookAddIn
 
                     string jsonBody = JsonConvert.SerializeObject(issueContent);
 
-                    if (Properties.Settings.Default.UseCurlClient)
+                    // --- ▼▼▼ 変更点 ▼▼▼ ---
+                    if (SettingsManager.UseCurlClient)
+                    // --- ▲▲▲ 変更点 ▲▲▲ ---
                     {
                         // --- curlコマンドでPUT ---
                         string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
@@ -312,7 +407,9 @@ namespace CrmOutlookAddIn
                 return null;
             }
 
-            string idprefix = Properties.Settings.Default.idprefix;
+            // --- ▼▼▼ 変更点 ▼▼▼ ---
+            string idprefix = SettingsManager.idprefix;
+            // --- ▲▲▲ 変更点 ▲▲▲ ---
 
             // Extract ticket id using regular expression
             var match = System.Text.RegularExpressions.Regex.Match(subject, $"{idprefix}(\\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -331,22 +428,27 @@ namespace CrmOutlookAddIn
                 return body;
             }
 
-            // Get ReplyDelimiter sequentially from app.config
+            // --- ▼▼▼ 変更点 ▼▼▼ ---
+            // Get ReplyDelimiter sequentially from the registry via SettingsManager
             List<string> replyDelimiters = new List<string>
             {
-                Properties.Settings.Default.ReplyDelimiter1,
-                Properties.Settings.Default.ReplyDelimiter2,
-                Properties.Settings.Default.ReplyDelimiter3,
-                Properties.Settings.Default.ReplyDelimiter4
+                SettingsManager.ReplyDelimiter1,
+                SettingsManager.ReplyDelimiter2,
+                SettingsManager.ReplyDelimiter3,
+                SettingsManager.ReplyDelimiter4
             };
+            // --- ▲▲▲ 変更点 ▲▲▲ ---
 
             // Detect previous mail part using regular expression
             foreach (var delimiter in replyDelimiters)
             {
-                var match = Regex.Match(body, delimiter, RegexOptions.Multiline | RegexOptions.IgnoreCase);
-                if (match.Success)
+                if (!string.IsNullOrEmpty(delimiter)) // 空のデリミタは無視する
                 {
-                    return body.Substring(0, match.Index).Trim(); // Return part before header
+                    var match = Regex.Match(body, delimiter, RegexOptions.Multiline | RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        return body.Substring(0, match.Index).Trim(); // Return part before header
+                    }
                 }
             }
 
@@ -391,7 +493,9 @@ namespace CrmOutlookAddIn
             string subject = null;
             try
             {
-                string redmineUrl = Properties.Settings.Default.RedmineUrl;
+                // --- ▼▼▼ 変更点 ▼▼▼ ---
+                string redmineUrl = SettingsManager.RedmineUrl;
+                // --- ▲▲▲ 変更点 ▲▲▲ ---
 
                 // Get the selected mail item
                 var explorer = this.Application.ActiveExplorer();
