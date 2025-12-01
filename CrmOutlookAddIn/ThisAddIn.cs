@@ -69,7 +69,7 @@ namespace CrmOutlookAddIn
 
         public static string idprefix
         {
-            get => GetValue("idprefix", "[id-").ToString();
+            get => GetValue("idprefix", "\\[id-").ToString();
             set => SetValue("idprefix", value);
         }
 
