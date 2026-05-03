@@ -10,14 +10,10 @@ using Microsoft.Office.Core;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-// --- ▼▼▼ 変更点 ▼▼▼ ---
-// レジストリを操作するために必要なusingディレクティブを追加
 using Microsoft.Win32;
-// --- ▲▲▲ 変更点 ▲▲▲ ---
 
 namespace CrmOutlookAddIn
 {
-    // --- ▼▼▼ 変更点 ▼▼▼ ---
     /// <summary>
     /// レジストリから設定を管理する静的クラス。
     /// HKEY_CURRENT_USER\Software\CrmOutlookAddIn に設定を保存します。
@@ -48,7 +44,6 @@ namespace CrmOutlookAddIn
             }
         }
 
-        // 各設定項目に対応するプロパティ
         public static string Init
         {
             get => GetValue("Init", "").ToString();
@@ -67,7 +62,6 @@ namespace CrmOutlookAddIn
             set => SetValue("RedmineApiKey", value);
         }
 
-        // --- ▼▼▼ 追加 ▼▼▼ ---
         public static string RedmineProjectId
         {
             get => GetValue("RedmineProjectId", "").ToString();
@@ -79,7 +73,6 @@ namespace CrmOutlookAddIn
             get => Convert.ToInt32(GetValue("RedmineUserId", 0));
             set => SetValue("RedmineUserId", value);
         }
-        // --- ▲▲▲ 追加 ▲▲▲ ---
 
         public static string idprefix
         {
@@ -117,8 +110,6 @@ namespace CrmOutlookAddIn
             set => SetValue("UseCurlClient", value);
         }
     }
-    // --- ▲▲▲ 変更点 ▲▲▲ ---
-
 
     public partial class ThisAddIn
     {
@@ -136,9 +127,6 @@ namespace CrmOutlookAddIn
 
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
-            // --- UIスレッドで実行が必須の処理 ---
-            // これらはOutlookのオブジェクトモデルにアクセスするため、必ずUIスreadで実行する必要があります。
-            // 通常は高速に完了するため、Startupの応答性にはほとんど影響しません。
             outlookApp = this.Application;
 
             // 受信トレイの監視設定
@@ -151,13 +139,8 @@ namespace CrmOutlookAddIn
             sentItems = sent.Items;
             sentItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(SentItemAdded);
 
-            // --- ▼▼▼ 追加 ▼▼▼ ---
             outlookApp.ItemSend += new ApplicationEvents_11_ItemSendEventHandler(OutlookApp_ItemSend);
-            // --- ▲▲▲ 追加 ▲▲▲ ---
 
-            // --- バックグラウンドで実行可能な初期化処理 ---
-            // 設定の初期化やログファイルのセットアップなど、UIスレッドをブロックする可能性のある処理を
-            // Task.Run を使って別スレッドで実行し、Outlookの起動を高速化します。
             Task.Run(() => InitializeInBackground());
         }
 
@@ -168,20 +151,13 @@ namespace CrmOutlookAddIn
         {
             try
             {
-                // --- ▼▼▼ 変更点 ▼▼▼ ---
-                // configファイルの代わりにレジストリを利用して初期化済みかチェックします。
                 if (SettingsManager.Init != "initialized")
                 {
-                    // 初回起動時は、レジストリに初期化済みフラグを書き込みます。
-                    // 各設定値は、SettingsManagerがデフォルト値を返すため、
-                    // ここで明示的に書き込む必要はありません。
                     SettingsManager.Init = "initialized";
                     SettingsManager.idprefix = SettingsManager.idprefix;
                     SettingsManager.RedmineApiKey = SettingsManager.RedmineApiKey;
                     SettingsManager.RedmineUrl = SettingsManager.RedmineUrl;
-                    // --- ▼▼▼ 追加 ▼▼▼ ---
                     SettingsManager.RedmineProjectId = SettingsManager.RedmineProjectId;
-                    // --- ▲▲▲ 追加 ▲▲▲ ---
                     SettingsManager.ReplyDelimiter1 = SettingsManager.ReplyDelimiter1;
                     SettingsManager.ReplyDelimiter2 = SettingsManager.ReplyDelimiter2;
                     SettingsManager.ReplyDelimiter3 = SettingsManager.ReplyDelimiter3;
@@ -190,19 +166,16 @@ namespace CrmOutlookAddIn
 
                     Trace.TraceInformation("First time initialization. Settings will use default values from registry.");
                 }
-                // --- ▲▲▲ 変更点 ▲▲▲ ---
-
 
                 // トレースリスナーの初期化
-                // ログファイルのセットアップもファイルI/Oを伴うため、バックグラウンドで行います。
                 string tempPath = Environment.GetEnvironmentVariable("TEMP");
                 if (!string.IsNullOrEmpty(tempPath))
                 {
                     string logFilePath = System.IO.Path.Combine(tempPath, "CrmOutlookAddIn.log");
                     var listener = new TextWriterTraceListener(logFilePath);
-                    listener.TraceOutputOptions = TraceOptions.DateTime; // タイムスタンプを付与
+                    listener.TraceOutputOptions = TraceOptions.DateTime;
                     Trace.Listeners.Add(listener);
-                    Trace.AutoFlush = true; // ログがすぐに書き込まれるようにする
+                    Trace.AutoFlush = true;
                     Trace.TraceInformation("Background initialization complete. Logging to: " + logFilePath);
                 }
                 else
@@ -212,12 +185,10 @@ namespace CrmOutlookAddIn
             }
             catch (System.Exception ex)
             {
-                // バックグラウンドスレッドで発生した例外は検知しにくいため、必ずログに記録します。
                 Trace.TraceError($"An error occurred during background initialization: {ex.ToString()}");
             }
         }
 
-        // --- ▼▼▼ 追加 ▼▼▼ ---
         /// <summary>
         /// メールの送信ボタンを押した際の処理
         /// 件名にIDが含まれていない場合、新規チケットを作成するか確認し、件名を書き換えます。
@@ -232,7 +203,7 @@ namespace CrmOutlookAddIn
                     if (string.IsNullOrEmpty(projectId))
                     {
                         Trace.TraceInformation("RedmineProjectId is not set. Skipping automatic ticket creation.");
-                        return; // チケットの新規作成は行わず、そのままメールを送信させる
+                        return;
                     }
 
                     string issueId = ExtractIssueIdFromSubject(mail.Subject);
@@ -240,7 +211,6 @@ namespace CrmOutlookAddIn
                     // 件名にチケットIDが含まれていない場合
                     if (string.IsNullOrEmpty(issueId))
                     {
-                        // ユーザーにチケットを作成するかどうか確認するダイアログを表示
                         var dialogResult = System.Windows.Forms.MessageBox.Show(
                             "このメールの件名にはRedmineのチケットIDが含まれていません。\n新規チケットを作成してから送信しますか？\n\n" +
                             "[はい] : 新規チケットを作成して件名に追記し、送信する\n" +
@@ -253,40 +223,30 @@ namespace CrmOutlookAddIn
 
                         if (dialogResult == System.Windows.Forms.DialogResult.Cancel)
                         {
-                            // 「キャンセル」が選ばれた場合、メールの送信を中止して編集画面に戻る
                             Cancel = true;
                             return;
                         }
                         else if (dialogResult == System.Windows.Forms.DialogResult.No)
                         {
-                            // 「いいえ」が選ばれた場合、チケット作成をスキップしてそのままメールを送信
                             return;
                         }
 
-                        // --- 以下、「はい」が選ばれた場合のチケット作成処理 ---
-
-                        // UIスレッドのフリーズ防止・COM例外防止のため、必要な情報を先に取得
                         string subject = mail.Subject ?? "No Subject";
                         string senderAddress = GetSmtpAddress(mail.Sender);
                         string trimmedBody = TrimQuotedText(mail.Body);
 
-                        // 別スレッドで同期的にAPIを呼び出してチケットを作成する
                         int newIssueId = Task.Run(() => CreateRedmineTicketSync(subject, senderAddress, trimmedBody)).GetAwaiter().GetResult();
 
                         if (newIssueId > 0)
                         {
-                            // idprefixから正規表現エスケープを取り除く (例: "\\[id-" -> "[id-")
                             string prefix = SettingsManager.idprefix.Replace("\\", "");
-                            // "["始まりの場合は"]"を閉じる
                             string suffix = prefix.StartsWith("[") ? "]" : "";
 
                             string idString = $"{prefix}{newIssueId}{suffix}";
 
-                            // メールの件名末尾にIDを追加して送信処理を継続
                             mail.Subject = $"{mail.Subject} {idString}";
-                            mail.Save(); // 変更を確実に適用させる
+                            mail.Save();
 
-                            // ブラウザで新規作成したチケットを開く
                             string url = $"{SettingsManager.RedmineUrl}/issues/{newIssueId}";
                             Process.Start(new ProcessStartInfo
                             {
@@ -301,7 +261,6 @@ namespace CrmOutlookAddIn
                 {
                     Trace.TraceError($"Error in ItemSend (Ticket Creation): {ex.ToString()}");
 
-                    // エラーを検知した場合はユーザーに通知（「はい」ならそのまま送信、「いいえ」なら送信キャンセル）
                     var result = System.Windows.Forms.MessageBox.Show(
                         $"Redmineチケットの自動作成に失敗しました。\nこのままメールを送信しますか？\n\nエラー詳細:\n{ex.Message}",
                         "Redmine Ticket Error",
@@ -310,20 +269,19 @@ namespace CrmOutlookAddIn
 
                     if (result == System.Windows.Forms.DialogResult.No)
                     {
-                        Cancel = true; // 送信をキャンセル
+                        Cancel = true;
                     }
                 }
             }
         }
 
         /// <summary>
-        /// APIキーから自分自身のRedmineユーザーIDを取得します。（2回目以降はレジストリから取得）
+        /// APIキーから自分自身のRedmineユーザーIDを取得します。
         /// </summary>
         private int GetCurrentUserIdSync()
         {
             try
             {
-                // すでに取得済みの場合はキャッシュを返す
                 int cachedId = SettingsManager.RedmineUserId;
                 if (cachedId > 0) return cachedId;
 
@@ -355,7 +313,7 @@ namespace CrmOutlookAddIn
                             if (responseObj["user"] != null && responseObj["user"]["id"] != null)
                             {
                                 int userId = responseObj["user"]["id"].Value<int>();
-                                SettingsManager.RedmineUserId = userId; // レジストリに保存
+                                SettingsManager.RedmineUserId = userId;
                                 return userId;
                             }
                         }
@@ -374,7 +332,7 @@ namespace CrmOutlookAddIn
                             if (responseObj["user"] != null && responseObj["user"]["id"] != null)
                             {
                                 int userId = responseObj["user"]["id"].Value<int>();
-                                SettingsManager.RedmineUserId = userId; // レジストリに保存
+                                SettingsManager.RedmineUserId = userId;
                                 return userId;
                             }
                         }
@@ -385,7 +343,7 @@ namespace CrmOutlookAddIn
             {
                 Trace.TraceWarning($"Failed to get current user ID: {ex.Message}");
             }
-            return 0; // 取得失敗時は0を返す
+            return 0;
         }
 
         private int CreateRedmineTicketSync(string subject, string senderAddress, string body)
@@ -404,7 +362,6 @@ namespace CrmOutlookAddIn
 
             int currentUserId = GetCurrentUserIdSync();
 
-            // 担当者(assigned_to_id)を動的に追加するためDictionaryを使用
             var issueData = new Dictionary<string, object>
             {
                 { "project_id", projectId },
@@ -412,7 +369,6 @@ namespace CrmOutlookAddIn
                 { "description", description }
             };
 
-            // IDが正常に取得できた場合のみ担当者としてセット
             if (currentUserId > 0)
             {
                 issueData.Add("assigned_to_id", currentUserId);
@@ -479,7 +435,6 @@ namespace CrmOutlookAddIn
                 }
             }
         }
-        // --- ▲▲▲ 追加 ▲▲▲ ---
 
         private void InboxItemAdded(object Item)
         {
@@ -499,7 +454,6 @@ namespace CrmOutlookAddIn
 
         private void NotifyUserOfError(System.Exception ex, string mailSubject)
         {
-            // Notify error with dialog
             System.Windows.Forms.MessageBox.Show(
                 $"An error occurred while saving the email with subject '{mailSubject}' to the database.\n\n" +
                 $"Error Details:\n{ex.Message}\n\n" +
@@ -509,14 +463,11 @@ namespace CrmOutlookAddIn
                 System.Windows.Forms.MessageBoxIcon.Error
             );
         }
+
         private void ThisAddIn_Shutdown(object sender, EventArgs e)
         {
-            // Note: Outlook no longer raises this event. If you have code that
-            //    must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785
         }
 
-
-        // Class for Redmine user information
         public class RedmineUser
         {
             public int id { get; set; }
@@ -531,8 +482,6 @@ namespace CrmOutlookAddIn
             public string value { get; set; }
         }
 
-
-        // SaveMailToRedmineAsync modification
         private async Task SaveMailToRedmineAsync(MailItem mail, string direction)
         {
             const int maxRetryCount = 5;
@@ -541,30 +490,24 @@ namespace CrmOutlookAddIn
             {
                 try
                 {
-                    // --- ▼▼▼ 変更点 ▼▼▼ ---
-                    // SettingsManagerから設定を読み込みます
                     string redmineUrl = SettingsManager.RedmineUrl;
                     string apiKey = SettingsManager.RedmineApiKey;
-                    // --- ▲▲▲ 変更点 ▲▲▲ ---
 
                     string senderEmail = GetSmtpAddress(mail.Sender);
 
-                    // Extract id:xxxx from subject
                     string issueId = ExtractIssueIdFromSubject(mail.Subject);
                     if (string.IsNullOrEmpty(issueId))
                     {
                         Trace.TraceInformation($"No valid Redmine ticket ID found in the mail subject: {mail.Subject}");
-                        return; // Skip registration
+                        return;
                     }
 
                     string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm");
 
-                    // 既存コメントの重複チェックはHttpClientで実施（curlでのGETは省略）
                     using (HttpClient client = new HttpClient())
                     {
                         client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
 
-                        // Get existing comments
                         string getUrl = $"{redmineUrl}/issues/{issueId}.json?include=journals";
                         Trace.TraceInformation($"Sending journal request to Redmine: {getUrl}");
                         HttpResponseMessage getResponse = await client.GetAsync(getUrl);
@@ -572,12 +515,11 @@ namespace CrmOutlookAddIn
                         {
                             string errorMessage = await getResponse.Content.ReadAsStringAsync();
                             Trace.TraceInformation($"Failed to get ticket information from Redmine: {getResponse.StatusCode} - {errorMessage}");
-                            return; // Skip registration
+                            return;
                         }
 
                         string issueJson = await getResponse.Content.ReadAsStringAsync();
 
-                        // Parse JSON using Newtonsoft.Json (Json.NET) and search journals for duplicate SentOn
                         var issueObj = JObject.Parse(issueJson);
                         var journals = issueObj["issue"]?["journals"] as JArray;
                         if (journals != null)
@@ -588,7 +530,7 @@ namespace CrmOutlookAddIn
                                 if (!string.IsNullOrEmpty(notes) && notes.Contains($"SentOn: {sentOnString}"))
                                 {
                                     Trace.TraceInformation($"A comment with the same SentOn already exists, skipping registration: {sentOnString}");
-                                    return; // Avoid duplicate comments
+                                    return;
                                 }
                             }
                         }
@@ -610,16 +552,11 @@ namespace CrmOutlookAddIn
 
                     string jsonBody = JsonConvert.SerializeObject(issueContent);
 
-                    // --- ▼▼▼ 変更点 ▼▼▼ ---
                     if (SettingsManager.UseCurlClient)
-                    // --- ▲▲▲ 変更点 ▲▲▲ ---
                     {
-                        // --- curlコマンドでPUT ---
                         string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
-                        // Windowsコマンドライン用にエスケープ
                         string escapedJson = jsonBody.Replace("\"", "\\\"").Replace("%", "%%");
 
-                        // curlコマンド組み立て
                         string arguments = $"-X PUT \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\"";
 
                         Trace.TraceInformation($"Executing curl: curl {arguments}");
@@ -651,7 +588,6 @@ namespace CrmOutlookAddIn
                     }
                     else
                     {
-                        // --- 既存のHttpClientでPUT ---
                         using (HttpClient client = new HttpClient())
                         {
                             client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
@@ -676,7 +612,6 @@ namespace CrmOutlookAddIn
                         }
                     }
 
-                    // 成功した場合はループを抜ける
                     return;
                 }
                 catch (System.Exception ex)
@@ -685,14 +620,12 @@ namespace CrmOutlookAddIn
                     if (retryCount == maxRetryCount - 1)
                     {
                         NotifyUserOfError(ex, mail.Subject);
-                        throw; // 最後のリトライでエラーが発生した場合は通知
+                        throw;
                     }
-                    // リトライ前に少し待機
-                    await Task.Delay(1000 * (retryCount + 1)); // リトライ間隔を増加させる
+                    await Task.Delay(1000 * (retryCount + 1));
                 }
             }
         }
-
 
         private string ExtractIssueIdFromSubject(string subject)
         {
@@ -701,11 +634,8 @@ namespace CrmOutlookAddIn
                 return null;
             }
 
-            // --- ▼▼▼ 変更点 ▼▼▼ ---
             string idprefix = SettingsManager.idprefix;
-            // --- ▲▲▲ 変更点 ▲▲▲ ---
 
-            // Extract ticket id using regular expression
             var match = System.Text.RegularExpressions.Regex.Match(subject, $"{idprefix}(\\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             return match.Success ? match.Groups[1].Value : null;
         }
@@ -715,6 +645,7 @@ namespace CrmOutlookAddIn
             this.Startup += new EventHandler(ThisAddIn_Startup);
             this.Shutdown += new EventHandler(ThisAddIn_Shutdown);
         }
+
         private string TrimQuotedText(string body)
         {
             if (string.IsNullOrEmpty(body))
@@ -722,8 +653,6 @@ namespace CrmOutlookAddIn
                 return body;
             }
 
-            // --- ▼▼▼ 変更点 ▼▼▼ ---
-            // Get ReplyDelimiter sequentially from the registry via SettingsManager
             List<string> replyDelimiters = new List<string>
             {
                 SettingsManager.ReplyDelimiter1,
@@ -731,41 +660,36 @@ namespace CrmOutlookAddIn
                 SettingsManager.ReplyDelimiter3,
                 SettingsManager.ReplyDelimiter4
             };
-            // --- ▲▲▲ 変更点 ▲▲▲ ---
 
-            // Detect previous mail part using regular expression
             foreach (var delimiter in replyDelimiters)
             {
-                if (!string.IsNullOrEmpty(delimiter)) // 空のデリミタは無視する
+                if (!string.IsNullOrEmpty(delimiter))
                 {
                     var match = Regex.Match(body, delimiter, RegexOptions.Multiline | RegexOptions.IgnoreCase);
                     if (match.Success)
                     {
-                        return body.Substring(0, match.Index).Trim(); // Return part before header
+                        return body.Substring(0, match.Index).Trim();
                     }
                 }
             }
 
-            return body; // Return as is if previous mail part is not found
+            return body;
         }
 
         private string GetSmtpAddress(AddressEntry addressEntry)
         {
             if (addressEntry != null)
             {
-                // PR_SMTP_ADDRESS property tag
                 const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
                 if (addressEntry.AddressEntryUserType == OlAddressEntryUserType.olExchangeUserAddressEntry ||
                     addressEntry.AddressEntryUserType == OlAddressEntryUserType.olExchangeRemoteUserAddressEntry)
                 {
                     try
                     {
-                        // Try to get the SMTP address from the PropertyAccessor first
                         return addressEntry.PropertyAccessor.GetProperty(PR_SMTP_ADDRESS).ToString();
                     }
                     catch (System.Exception)
                     {
-                        // Fallback to GetExchangeUser() if PropertyAccessor fails
                         var exchUser = addressEntry.GetExchangeUser();
                         if (exchUser != null)
                         {
@@ -781,30 +705,24 @@ namespace CrmOutlookAddIn
             return "Unknown";
         }
 
-
         public void SaveToRedmine(IRibbonControl control)
         {
             string subject = null;
             try
             {
-                // --- ▼▼▼ 変更点 ▼▼▼ ---
                 string redmineUrl = SettingsManager.RedmineUrl;
-                // --- ▲▲▲ 変更点 ▲▲▲ ---
 
-                // Get the selected mail item
                 var explorer = this.Application.ActiveExplorer();
                 if (explorer.Selection.Count > 0 && explorer.Selection[1] is MailItem mail)
                 {
                     subject = Uri.EscapeDataString(mail.Subject ?? "No Subject");
 
-                    // Truncate the body before escaping
                     string rawBody = mail.Body ?? "No Body";
                     if (rawBody.Length > 1000)
                     {
                         rawBody = rawBody.Substring(0, 1000);
                     }
 
-                    // Escape the truncated body
                     string description = Uri.EscapeDataString(rawBody);
 
                     string ticketCreationUrl = $"{redmineUrl}/issues/new?issue[subject]={subject}&issue[description]={description}";
