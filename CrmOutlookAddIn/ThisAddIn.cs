@@ -484,6 +484,12 @@ namespace CrmOutlookAddIn
 
         private async Task SaveMailToRedmineAsync(MailItem mail, string direction)
         {
+            string subject = mail.Subject;
+            string senderEmail = GetSmtpAddress(mail.Sender);
+            string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm");
+            string trimmedBody = TrimQuotedText(mail.Body);
+            string recipients = string.Join(";", mail.Recipients.Cast<Recipient>().Select(r => (string)GetSmtpAddress(r.AddressEntry)));
+
             const int maxRetryCount = 5;
 
             for (int retryCount = 0; retryCount < maxRetryCount; retryCount++)
@@ -493,16 +499,13 @@ namespace CrmOutlookAddIn
                     string redmineUrl = SettingsManager.RedmineUrl;
                     string apiKey = SettingsManager.RedmineApiKey;
 
-                    string senderEmail = GetSmtpAddress(mail.Sender);
 
-                    string issueId = ExtractIssueIdFromSubject(mail.Subject);
+                    string issueId = ExtractIssueIdFromSubject(subject);
                     if (string.IsNullOrEmpty(issueId))
                     {
-                        Trace.TraceInformation($"No valid Redmine ticket ID found in the mail subject: {mail.Subject}");
+                        Trace.TraceInformation($"No valid Redmine ticket ID found in the mail subject: {subject}");
                         return;
                     }
-
-                    string sentOnString = mail.SentOn.ToString("yyyy-MM-dd HH:mm");
 
                     using (HttpClient client = new HttpClient())
                     {
@@ -536,16 +539,14 @@ namespace CrmOutlookAddIn
                         }
                     }
 
-                    string trimmedBody = TrimQuotedText(mail.Body);
-
                     var issueContent = new
                     {
                         issue = new
                         {
                             notes = $"SentOn: {sentOnString}\n" +
-                                $"Subject: {mail.Subject ?? "No Subject"}\n" +
+                                $"Subject: {subject ?? "No Subject"}\n" +
                                 $"Sender: {senderEmail}\n" +
-                                $"Recipients: {string.Join(";", mail.Recipients.Cast<Recipient>().Select(r => (string)GetSmtpAddress(r.AddressEntry)))}\n\n" +
+                                $"Recipients: {recipients}\n\n" +
                                 $"{trimmedBody?.Substring(0, Math.Min(trimmedBody.Length, 1000)) ?? "No Body"}"
                         }
                     };
@@ -619,7 +620,7 @@ namespace CrmOutlookAddIn
                     Trace.TraceError($"Error occurred while registering note to Redmine (Attempt {retryCount}/{maxRetryCount}): {ex.Message}\n{ex}");
                     if (retryCount == maxRetryCount - 1)
                     {
-                        NotifyUserOfError(ex, mail.Subject);
+                        NotifyUserOfError(ex, subject);
                         throw;
                     }
                     await Task.Delay(1000 * (retryCount + 1));
