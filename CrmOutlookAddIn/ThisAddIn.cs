@@ -220,7 +220,7 @@ namespace CrmOutlookAddIn
         // --- ▼▼▼ 追加 ▼▼▼ ---
         /// <summary>
         /// メールの送信ボタンを押した際の処理
-        /// 件名にIDが含まれていない場合、新規チケットを作成し件名を書き換えます。
+        /// 件名にIDが含まれていない場合、新規チケットを作成するか確認し、件名を書き換えます。
         /// </summary>
         private void OutlookApp_ItemSend(object Item, ref bool Cancel)
         {
@@ -240,6 +240,31 @@ namespace CrmOutlookAddIn
                     // 件名にチケットIDが含まれていない場合
                     if (string.IsNullOrEmpty(issueId))
                     {
+                        // ユーザーにチケットを作成するかどうか確認するダイアログを表示
+                        var dialogResult = System.Windows.Forms.MessageBox.Show(
+                            "このメールの件名にはRedmineのチケットIDが含まれていません。\n新規チケットを作成してから送信しますか？\n\n" +
+                            "[はい] : 新規チケットを作成して件名に追記し、送信する\n" +
+                            "[いいえ] : 新規チケットは作成せず、そのまま送信する\n" +
+                            "[キャンセル] : メールの送信処理自体を中止する",
+                            "Redmine 新規チケット作成の確認",
+                            System.Windows.Forms.MessageBoxButtons.YesNoCancel,
+                            System.Windows.Forms.MessageBoxIcon.Question
+                        );
+
+                        if (dialogResult == System.Windows.Forms.DialogResult.Cancel)
+                        {
+                            // 「キャンセル」が選ばれた場合、メールの送信を中止して編集画面に戻る
+                            Cancel = true;
+                            return;
+                        }
+                        else if (dialogResult == System.Windows.Forms.DialogResult.No)
+                        {
+                            // 「いいえ」が選ばれた場合、チケット作成をスキップしてそのままメールを送信
+                            return;
+                        }
+
+                        // --- 以下、「はい」が選ばれた場合のチケット作成処理 ---
+
                         // UIスレッドのフリーズ防止・COM例外防止のため、必要な情報を先に取得
                         string subject = mail.Subject ?? "No Subject";
                         string senderAddress = GetSmtpAddress(mail.Sender);
@@ -486,7 +511,7 @@ namespace CrmOutlookAddIn
         }
         private void ThisAddIn_Shutdown(object sender, EventArgs e)
         {
-            // Note: Outlook no longer raises this event. If you have code that 
+            // Note: Outlook no longer raises this event. If you have code that
             //    must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785
         }
 
