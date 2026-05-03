@@ -67,6 +67,20 @@ namespace CrmOutlookAddIn
             set => SetValue("RedmineApiKey", value);
         }
 
+        // --- ▼▼▼ 追加 ▼▼▼ ---
+        public static string RedmineProjectId
+        {
+            get => GetValue("RedmineProjectId", "").ToString();
+            set => SetValue("RedmineProjectId", value);
+        }
+
+        public static int RedmineUserId
+        {
+            get => Convert.ToInt32(GetValue("RedmineUserId", 0));
+            set => SetValue("RedmineUserId", value);
+        }
+        // --- ▲▲▲ 追加 ▲▲▲ ---
+
         public static string idprefix
         {
             get => GetValue("idprefix", "\\[id-").ToString();
@@ -137,6 +151,10 @@ namespace CrmOutlookAddIn
             sentItems = sent.Items;
             sentItems.ItemAdd += new ItemsEvents_ItemAddEventHandler(SentItemAdded);
 
+            // --- ▼▼▼ 追加 ▼▼▼ ---
+            outlookApp.ItemSend += new ApplicationEvents_11_ItemSendEventHandler(OutlookApp_ItemSend);
+            // --- ▲▲▲ 追加 ▲▲▲ ---
+
             // --- バックグラウンドで実行可能な初期化処理 ---
             // 設定の初期化やログファイルのセットアップなど、UIスレッドをブロックする可能性のある処理を
             // Task.Run を使って別スレッドで実行し、Outlookの起動を高速化します。
@@ -161,6 +179,9 @@ namespace CrmOutlookAddIn
                     SettingsManager.idprefix = SettingsManager.idprefix;
                     SettingsManager.RedmineApiKey = SettingsManager.RedmineApiKey;
                     SettingsManager.RedmineUrl = SettingsManager.RedmineUrl;
+                    // --- ▼▼▼ 追加 ▼▼▼ ---
+                    SettingsManager.RedmineProjectId = SettingsManager.RedmineProjectId;
+                    // --- ▲▲▲ 追加 ▲▲▲ ---
                     SettingsManager.ReplyDelimiter1 = SettingsManager.ReplyDelimiter1;
                     SettingsManager.ReplyDelimiter2 = SettingsManager.ReplyDelimiter2;
                     SettingsManager.ReplyDelimiter3 = SettingsManager.ReplyDelimiter3;
@@ -195,6 +216,245 @@ namespace CrmOutlookAddIn
                 Trace.TraceError($"An error occurred during background initialization: {ex.ToString()}");
             }
         }
+
+        // --- ▼▼▼ 追加 ▼▼▼ ---
+        /// <summary>
+        /// メールの送信ボタンを押した際の処理
+        /// 件名にIDが含まれていない場合、新規チケットを作成し件名を書き換えます。
+        /// </summary>
+        private void OutlookApp_ItemSend(object Item, ref bool Cancel)
+        {
+            if (Item is MailItem mail)
+            {
+                try
+                {
+                    string projectId = SettingsManager.RedmineProjectId;
+                    if (string.IsNullOrEmpty(projectId))
+                    {
+                        Trace.TraceInformation("RedmineProjectId is not set. Skipping automatic ticket creation.");
+                        return; // チケットの新規作成は行わず、そのままメールを送信させる
+                    }
+
+                    string issueId = ExtractIssueIdFromSubject(mail.Subject);
+
+                    // 件名にチケットIDが含まれていない場合
+                    if (string.IsNullOrEmpty(issueId))
+                    {
+                        // UIスレッドのフリーズ防止・COM例外防止のため、必要な情報を先に取得
+                        string subject = mail.Subject ?? "No Subject";
+                        string senderAddress = GetSmtpAddress(mail.Sender);
+                        string trimmedBody = TrimQuotedText(mail.Body);
+
+                        // 別スレッドで同期的にAPIを呼び出してチケットを作成する
+                        int newIssueId = Task.Run(() => CreateRedmineTicketSync(subject, senderAddress, trimmedBody)).GetAwaiter().GetResult();
+
+                        if (newIssueId > 0)
+                        {
+                            // idprefixから正規表現エスケープを取り除く (例: "\\[id-" -> "[id-")
+                            string prefix = SettingsManager.idprefix.Replace("\\", "");
+                            // "["始まりの場合は"]"を閉じる
+                            string suffix = prefix.StartsWith("[") ? "]" : "";
+
+                            string idString = $"{prefix}{newIssueId}{suffix}";
+
+                            // メールの件名末尾にIDを追加して送信処理を継続
+                            mail.Subject = $"{mail.Subject} {idString}";
+                            mail.Save(); // 変更を確実に適用させる
+
+                            // ブラウザで新規作成したチケットを開く
+                            string url = $"{SettingsManager.RedmineUrl}/issues/{newIssueId}";
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = url,
+                                UseShellExecute = true
+                            });
+                            Trace.TraceInformation($"Opened newly created Redmine ticket page: {url}");
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Trace.TraceError($"Error in ItemSend (Ticket Creation): {ex.ToString()}");
+
+                    // エラーを検知した場合はユーザーに通知（「はい」ならそのまま送信、「いいえ」なら送信キャンセル）
+                    var result = System.Windows.Forms.MessageBox.Show(
+                        $"Redmineチケットの自動作成に失敗しました。\nこのままメールを送信しますか？\n\nエラー詳細:\n{ex.Message}",
+                        "Redmine Ticket Error",
+                        System.Windows.Forms.MessageBoxButtons.YesNo,
+                        System.Windows.Forms.MessageBoxIcon.Warning);
+
+                    if (result == System.Windows.Forms.DialogResult.No)
+                    {
+                        Cancel = true; // 送信をキャンセル
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// APIキーから自分自身のRedmineユーザーIDを取得します。（2回目以降はレジストリから取得）
+        /// </summary>
+        private int GetCurrentUserIdSync()
+        {
+            try
+            {
+                // すでに取得済みの場合はキャッシュを返す
+                int cachedId = SettingsManager.RedmineUserId;
+                if (cachedId > 0) return cachedId;
+
+                string requestUrl = $"{SettingsManager.RedmineUrl}/users/current.json";
+                string apiKey = SettingsManager.RedmineApiKey;
+
+                if (SettingsManager.UseCurlClient)
+                {
+                    string arguments = $"-s -X GET \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\"";
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "curl",
+                        Arguments = arguments,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+
+                    using (var process = new Process { StartInfo = psi })
+                    {
+                        process.Start();
+                        string output = process.StandardOutput.ReadToEnd();
+                        process.WaitForExit();
+
+                        if (process.ExitCode == 0)
+                        {
+                            var responseObj = JObject.Parse(output);
+                            if (responseObj["user"] != null && responseObj["user"]["id"] != null)
+                            {
+                                int userId = responseObj["user"]["id"].Value<int>();
+                                SettingsManager.RedmineUserId = userId; // レジストリに保存
+                                return userId;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    using (HttpClient client = new HttpClient())
+                    {
+                        client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
+                        HttpResponseMessage response = client.GetAsync(requestUrl).GetAwaiter().GetResult();
+                        if (response.IsSuccessStatusCode)
+                        {
+                            string responseString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                            var responseObj = JObject.Parse(responseString);
+                            if (responseObj["user"] != null && responseObj["user"]["id"] != null)
+                            {
+                                int userId = responseObj["user"]["id"].Value<int>();
+                                SettingsManager.RedmineUserId = userId; // レジストリに保存
+                                return userId;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Trace.TraceWarning($"Failed to get current user ID: {ex.Message}");
+            }
+            return 0; // 取得失敗時は0を返す
+        }
+
+        private int CreateRedmineTicketSync(string subject, string senderAddress, string body)
+        {
+            string redmineUrl = SettingsManager.RedmineUrl;
+            string apiKey = SettingsManager.RedmineApiKey;
+            string projectId = SettingsManager.RedmineProjectId;
+
+            if (string.IsNullOrEmpty(projectId))
+            {
+                throw new System.Exception("RedmineのプロジェクトID(RedmineProjectId)が設定されていません。");
+            }
+
+            string description = $"Sender: {senderAddress}\n\n" +
+                                 $"{body?.Substring(0, Math.Min(body.Length, 1000)) ?? "No Body"}";
+
+            int currentUserId = GetCurrentUserIdSync();
+
+            // 担当者(assigned_to_id)を動的に追加するためDictionaryを使用
+            var issueData = new Dictionary<string, object>
+            {
+                { "project_id", projectId },
+                { "subject", subject },
+                { "description", description }
+            };
+
+            // IDが正常に取得できた場合のみ担当者としてセット
+            if (currentUserId > 0)
+            {
+                issueData.Add("assigned_to_id", currentUserId);
+            }
+
+            var issueContent = new { issue = issueData };
+
+            string jsonBody = JsonConvert.SerializeObject(issueContent);
+            string requestUrl = $"{redmineUrl}/issues.json";
+
+            if (SettingsManager.UseCurlClient)
+            {
+                string escapedJson = jsonBody.Replace("\"", "\\\"").Replace("%", "%%");
+                string arguments = $"-s -X POST \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\"";
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "curl",
+                    Arguments = arguments,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (var process = new Process { StartInfo = psi })
+                {
+                    process.Start();
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+
+                    if (process.ExitCode != 0) throw new System.Exception($"curl failed: {error}");
+
+                    var responseObj = JObject.Parse(output);
+                    if (responseObj["issue"] != null && responseObj["issue"]["id"] != null)
+                    {
+                        return responseObj["issue"]["id"].Value<int>();
+                    }
+                    throw new System.Exception($"Failed to parse issue id from curl output. Output: {output}");
+                }
+            }
+            else
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
+                    var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+
+                    HttpResponseMessage response = client.PostAsync(requestUrl, content).GetAwaiter().GetResult();
+                    string responseString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new System.Exception($"Failed to create ticket: {response.StatusCode} - {responseString}");
+                    }
+
+                    var responseObj = JObject.Parse(responseString);
+                    if (responseObj["issue"] != null && responseObj["issue"]["id"] != null)
+                    {
+                        return responseObj["issue"]["id"].Value<int>();
+                    }
+                    throw new System.Exception($"Failed to parse issue id from API response. Response: {responseString}");
+                }
+            }
+        }
+        // --- ▲▲▲ 追加 ▲▲▲ ---
 
         private void InboxItemAdded(object Item)
         {
