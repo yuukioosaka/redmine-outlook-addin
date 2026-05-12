@@ -235,7 +235,7 @@ namespace CrmOutlookAddIn
                         string senderAddress = GetSmtpAddress(mail.Sender);
                         string trimmedBody = TrimQuotedText(mail.Body);
 
-                        int newIssueId = Task.Run(() => CreateRedmineTicketSync(subject, senderAddress, trimmedBody)).GetAwaiter().GetResult();
+                        int newIssueId = CreateRedmineTicketSync(subject, senderAddress, trimmedBody);
 
                         if (newIssueId > 0)
                         {
@@ -290,6 +290,7 @@ namespace CrmOutlookAddIn
 
                 if (SettingsManager.UseCurlClient)
                 {
+                    // curl側は変更なし
                     string arguments = $"-s -X GET \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\"";
                     var psi = new ProcessStartInfo
                     {
@@ -321,20 +322,21 @@ namespace CrmOutlookAddIn
                 }
                 else
                 {
-                    using (HttpClient client = new HttpClient())
+                    // ★ HttpClient → HttpWebRequest に変更
+                    var request = (HttpWebRequest)WebRequest.Create(requestUrl);
+                    request.Headers.Add("X-Redmine-API-Key", apiKey);
+                    request.Method = "GET";
+
+                    using (var webResponse = (HttpWebResponse)request.GetResponse())
+                    using (var reader = new System.IO.StreamReader(webResponse.GetResponseStream()))
                     {
-                        client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
-                        HttpResponseMessage response = client.GetAsync(requestUrl).GetAwaiter().GetResult();
-                        if (response.IsSuccessStatusCode)
+                        string responseString = reader.ReadToEnd();
+                        var responseObj = JObject.Parse(responseString);
+                        if (responseObj["user"] != null && responseObj["user"]["id"] != null)
                         {
-                            string responseString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                            var responseObj = JObject.Parse(responseString);
-                            if (responseObj["user"] != null && responseObj["user"]["id"] != null)
-                            {
-                                int userId = responseObj["user"]["id"].Value<int>();
-                                SettingsManager.RedmineUserId = userId;
-                                return userId;
-                            }
+                            int userId = responseObj["user"]["id"].Value<int>();
+                            SettingsManager.RedmineUserId = userId;
+                            return userId;
                         }
                     }
                 }
@@ -375,12 +377,12 @@ namespace CrmOutlookAddIn
             }
 
             var issueContent = new { issue = issueData };
-
             string jsonBody = JsonConvert.SerializeObject(issueContent);
             string requestUrl = $"{redmineUrl}/issues.json";
 
             if (SettingsManager.UseCurlClient)
             {
+                // curl側は変更なし
                 string escapedJson = jsonBody.Replace("\"", "\\\"").Replace("%", "%%");
                 string arguments = $"-s -X POST \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\"";
 
@@ -413,25 +415,46 @@ namespace CrmOutlookAddIn
             }
             else
             {
-                using (HttpClient client = new HttpClient())
+                // ★ HttpClient → HttpWebRequest に変更
+                byte[] bodyBytes = Encoding.UTF8.GetBytes(jsonBody);
+
+                var request = (HttpWebRequest)WebRequest.Create(requestUrl);
+                request.Headers.Add("X-Redmine-API-Key", apiKey);
+                request.Method = "POST";
+                request.ContentType = "application/json";
+                request.ContentLength = bodyBytes.Length;
+
+                using (var stream = request.GetRequestStream())
                 {
-                    client.DefaultRequestHeaders.Add("X-Redmine-API-Key", apiKey);
-                    var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                    stream.Write(bodyBytes, 0, bodyBytes.Length);
+                }
 
-                    HttpResponseMessage response = client.PostAsync(requestUrl, content).GetAwaiter().GetResult();
-                    string responseString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-
-                    if (!response.IsSuccessStatusCode)
+                try
+                {
+                    using (var webResponse = (HttpWebResponse)request.GetResponse())
+                    using (var reader = new System.IO.StreamReader(webResponse.GetResponseStream()))
                     {
-                        throw new System.Exception($"Failed to create ticket: {response.StatusCode} - {responseString}");
+                        string responseString = reader.ReadToEnd();
+                        var responseObj = JObject.Parse(responseString);
+                        if (responseObj["issue"] != null && responseObj["issue"]["id"] != null)
+                        {
+                            return responseObj["issue"]["id"].Value<int>();
+                        }
+                        throw new System.Exception($"Failed to parse issue id from API response. Response: {responseString}");
                     }
-
-                    var responseObj = JObject.Parse(responseString);
-                    if (responseObj["issue"] != null && responseObj["issue"]["id"] != null)
+                }
+                catch (WebException webEx)
+                {
+                    // ★ HttpWebRequest はエラーレスポンスを例外で返すため個別にハンドリング
+                    if (webEx.Response is HttpWebResponse errorResponse)
                     {
-                        return responseObj["issue"]["id"].Value<int>();
+                        using (var reader = new System.IO.StreamReader(errorResponse.GetResponseStream()))
+                        {
+                            string errorBody = reader.ReadToEnd();
+                            throw new System.Exception($"Failed to create ticket: {errorResponse.StatusCode} - {errorBody}");
+                        }
                     }
-                    throw new System.Exception($"Failed to parse issue id from API response. Response: {responseString}");
+                    throw;
                 }
             }
         }
