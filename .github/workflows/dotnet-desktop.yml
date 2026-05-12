@@ -20,6 +20,16 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore CrmOutlookAddIn\CrmOutlookAddIn.sln
 
+      # ★ 追加: 証明書を証明書ストアにインポート
+      - name: Import signing certificate
+        run: |
+          $pfxPath = "${{ github.workspace }}\CrmOutlookAddIn\CrmOutlookAddIn_TemporaryKey.pfx"
+          Import-PfxCertificate `
+            -FilePath $pfxPath `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Password (New-Object System.Security.SecureString)
+        shell: pwsh
+
       - name: Setup MSBuild.exe
         uses: microsoft/setup-msbuild@v2
 
