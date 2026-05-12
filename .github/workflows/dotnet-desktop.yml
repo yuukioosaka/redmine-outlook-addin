@@ -35,7 +35,7 @@ jobs:
 
       - name: Build VSTO project
         run: |
-          msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish /p:BootstrapperEnabled=false /p:SignBootstrapper=false
+          msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\ /p:BootstrapperEnabled=false /p:SignBootstrapper=false
 
       - name: Archive publish folder
         run: |
