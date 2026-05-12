@@ -214,11 +214,11 @@ namespace CrmOutlookAddIn
                     if (string.IsNullOrEmpty(issueId))
                     {
                         var dialogResult = System.Windows.Forms.MessageBox.Show(
-                            "このメールの件名にはRedmineのチケットIDが含まれていません。\n新規チケットを作成してから送信しますか？\n\n" +
-                            "[はい] : 新規チケットを作成して件名に追記し、送信する\n" +
-                            "[いいえ] : 新規チケットは作成せず、そのまま送信する\n" +
-                            "[キャンセル] : メールの送信処理自体を中止する",
-                            "Redmine 新規チケット作成の確認",
+                            "No Redmine ticket ID in subject. Create a new ticket?\n\n" +
+                                                        "[Yes] : Create & Add ID\n" +
+                                                        "[No] : Send only\n" +
+                                                        "[Cancel] : Cancel Send",
+                                                        "Redmine Ticket",
                             System.Windows.Forms.MessageBoxButtons.YesNoCancel,
                             System.Windows.Forms.MessageBoxIcon.Question
                         );
@@ -264,7 +264,7 @@ namespace CrmOutlookAddIn
                     Trace.TraceError($"Error in ItemSend (Ticket Creation): {ex.ToString()}");
 
                     var result = System.Windows.Forms.MessageBox.Show(
-                        $"Redmineチケットの自動作成に失敗しました。\nこのままメールを送信しますか？\n\nエラー詳細:\n{ex.Message}",
+                        $"Failed to create Redmine ticket.\nSend the email anyway?\n\nError:\n{ex.Message}",
                         "Redmine Ticket Error",
                         System.Windows.Forms.MessageBoxButtons.YesNo,
                         System.Windows.Forms.MessageBoxIcon.Warning);
