@@ -128,6 +128,7 @@ namespace CrmOutlookAddIn
 
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
+            System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
             outlookApp = this.Application;
 
             // 受信トレイの監視設定
