@@ -47,8 +47,6 @@
     <FriendlyName>CrmOutlookAddIn</FriendlyName>
     <OfficeApplicationDescription />
     <LoadBehavior>3</LoadBehavior>
-    <SignManifests>false</SignManifests>
-    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.8">
@@ -246,9 +244,6 @@
     </Compile>
     <Compile Include="Ribbon1.cs" />
     <Compile Include="RibbonExtender.cs" />
-    <Compile Include="ThisAddIn.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>
     </Compile>
