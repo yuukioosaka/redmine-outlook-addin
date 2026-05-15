@@ -27,9 +27,6 @@ jobs:
         shell: powershell
         run: |
           $pfxPath = "CrmOutlookAddIn\CrmOutlookAddIn_TemporaryKey.pfx"
-          # 空のパスワードをセキュアストリングとして生成
-          $secretPassword = ConvertTo-SecureString "" -AsPlainText -Force
-          # ユーザーの証明書ストア（My）にインポート 
           Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My
 
       - name: Build VSTO project
