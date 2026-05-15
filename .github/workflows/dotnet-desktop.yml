@@ -23,6 +23,15 @@ jobs:
       - name: Setup MSBuild.exe
         uses: microsoft/setup-msbuild@v2
 
+      - name: Import Empty Password PFX Certificate
+        shell: powershell
+        run: |
+          $pfxPath = "CrmOutlookAddIn\CrmOutlookAddIn_TemporaryKey.pfx"
+          # 空のパスワードをセキュアストリングとして生成
+          $secretPassword = ConvertTo-SecureString "" -AsPlainText -Force
+          # ユーザーの証明書ストア（My）にインポート
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $secretPassword
+
       - name: Build VSTO project
         run: |
           msbuild CrmOutlookAddIn\CrmOutlookAddIn.csproj /target:Publish /p:Configuration=Release /p:PublishDir=publish\
