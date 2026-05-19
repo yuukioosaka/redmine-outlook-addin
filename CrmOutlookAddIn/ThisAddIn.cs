@@ -409,6 +409,9 @@ namespace CrmOutlookAddIn
                         }
                     }
 
+                    // 標準入力ストリームを閉じてcurlにデータ送信完了を知らせる
+                    process.StandardInput.Close();
+
                     string output = process.StandardOutput.ReadToEnd();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
@@ -624,6 +627,8 @@ namespace CrmOutlookAddIn
                                         sw.Write(jsonBody);
                                     }
                                 }
+
+                                process.StandardInput.Close();
 
                                 string output = process.StandardOutput.ReadToEnd();
                                 string error = process.StandardError.ReadToEnd();
