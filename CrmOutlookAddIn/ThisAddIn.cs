@@ -249,7 +249,7 @@ namespace CrmOutlookAddIn
                             mail.Subject = $"{mail.Subject} {idString}";
                             mail.Save();
 
-                            string url = $"{SettingsManager.RedmineUrl}/issues/{newIssueId}";
+                            string url = $"{SettingsManager.RedmineUrl}/issues/{newIssueId}/edit";
                             Process.Start(new ProcessStartInfo
                             {
                                 FileName = url,
