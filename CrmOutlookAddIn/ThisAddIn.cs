@@ -386,7 +386,8 @@ namespace CrmOutlookAddIn
             {
                 // curl側は変更なし
                 string escapedJson = jsonBody.Replace("\"", "\\\"").Replace("%", "%%");
-                string arguments = $"-s -X POST \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\"";
+                string tempFile = System.IO.Path.GetTempFileName();
+                string arguments = $"-s -S -X POST \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\" -o \"{tempFile}\" -w \"%{{http_code}}\"";
 
                 var psi = new ProcessStartInfo
                 {
@@ -405,14 +406,19 @@ namespace CrmOutlookAddIn
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
 
-                    if (process.ExitCode != 0) throw new System.Exception($"curl failed: {error}");
+                    string httpCode = output?.Trim();
+                    string responseBody = System.IO.File.ReadAllText(tempFile);
+                    try { System.IO.File.Delete(tempFile); } catch { }
 
-                    var responseObj = JObject.Parse(output);
+                    if (process.ExitCode != 0) throw new System.Exception($"curl failed: {error}");
+                    if (httpCode == null || !httpCode.StartsWith("2")) throw new System.Exception($"curl HTTP {httpCode}: {responseBody}");
+
+                    var responseObj = JObject.Parse(responseBody);
                     if (responseObj["issue"] != null && responseObj["issue"]["id"] != null)
                     {
                         return responseObj["issue"]["id"].Value<int>();
                     }
-                    throw new System.Exception($"Failed to parse issue id from curl output. Output: {output}");
+                    throw new System.Exception($"Failed to parse issue id from curl output. Body: {responseBody}");
                 }
             }
             else
@@ -583,7 +589,8 @@ namespace CrmOutlookAddIn
                         string requestUrl = $"{redmineUrl}/issues/{issueId}.json";
                         string escapedJson = jsonBody.Replace("\"", "\\\"").Replace("%", "%%");
 
-                        string arguments = $"-X PUT \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\"";
+                        string tempFile = System.IO.Path.GetTempFileName();
+                        string arguments = $"-s -S -X PUT \"{requestUrl}\" -H \"X-Redmine-API-Key: {apiKey}\" -H \"Content-Type: application/json\" -d \"{escapedJson}\" -o \"{tempFile}\" -w \"%{{http_code}}\"";
 
                         Trace.TraceInformation($"Executing curl: curl {arguments}");
 
@@ -604,7 +611,11 @@ namespace CrmOutlookAddIn
                             string error = process.StandardError.ReadToEnd();
                             process.WaitForExit();
 
-                            Trace.TraceInformation($"curl output: {output}");
+                            string httpCode = output?.Trim();
+                            string responseBody = System.IO.File.ReadAllText(tempFile);
+                            try { System.IO.File.Delete(tempFile); } catch { }
+
+                            Trace.TraceInformation($"curl HTTP {httpCode} response: {responseBody}");
                             if (process.ExitCode != 0)
                             {
                                 Trace.TraceError($"curl error: {error}");
